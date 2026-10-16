@@ -1,0 +1,135 @@
+<%= form_for(user, as: :user, html: { autocomplete: 'off' }, data: { disabled: read_only }) do |form| %>
+
+  <div class="users-form-page">
+    <div class="crm-card users-form-page__card">
+
+      <div class="users-form-page__header">
+        <div class="users-form-page__header-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="users-form-page__title"><%= user.new_record? ? 'Criar Usuário' : 'Editar Usuário' %></h2>
+          <p class="users-form-page__subtitle">Informações do usuário</p>
+        </div>
+      </div>
+
+      <% if user.errors.any? %>
+        <div class="users-form-page__errors">
+          <div class="users-form-page__errors-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div>
+            <strong>Corrija os erros abaixo:</strong>
+            <ul>
+              <% user.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="users-form-page__body">
+
+        <div class="users-form-page__field">
+          <%= form.label :name, 'Nome', class: 'crm-label' %>
+          <%= form.text_field :name, class: 'crm-input', required: true, placeholder: 'Nome completo' %>
+        </div>
+
+        <div class="users-form-page__field">
+          <%= form.label :email, 'E-mail', class: 'crm-label' %>
+          <%= form.email_field :email, class: 'crm-input', required: true, placeholder: 'email@exemplo.com' %>
+        </div>
+
+        <% if user.new_record? %>
+          <div class="users-form-page__row">
+            <div class="users-form-page__field">
+              <%= form.label :password, 'Senha', class: 'crm-label' %>
+              <%= form.password_field :password, class: 'crm-input', required: true, placeholder: 'Mínimo 6 caracteres' %>
+            </div>
+            <div class="users-form-page__field">
+              <%= form.label :password_confirmation, 'Confirmar Senha', class: 'crm-label' %>
+              <%= form.password_field :password_confirmation, class: 'crm-input', required: true, placeholder: 'Repita a senha' %>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="users-form-page__row">
+          <div class="users-form-page__field">
+            <%= form.label :profile_id, 'Perfil', class: 'crm-label' %>
+            <%= form.collection_select :profile_id, @profiles || [], :id, :name,
+                { include_blank: 'Selecione um perfil' },
+                { class: 'crm-input users-form-page__select' } %>
+          </div>
+          <div class="users-form-page__field">
+            <%= form.label :client_id, 'Cliente', class: 'crm-label' %>
+            <%= form.collection_select :client_id, @clients || [], :id, :name,
+                { include_blank: 'Selecione um cliente' },
+                { class: 'crm-input users-form-page__select' } %>
+          </div>
+        </div>
+
+        <% if user.client.present? %>
+          <div class="users-form-page__section">
+            <div class="users-form-page__section-header">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+              </svg>
+              Configurações Shopify do Cliente: <%= user.client.name %>
+            </div>
+            <div class="users-form-page__row">
+              <div class="users-form-page__field">
+                <label class="crm-label">URL da Loja</label>
+                <div class="users-form-page__readonly">
+                  <% if user.client.shopify_shop_url.present? %>
+                    <a href="<%= user.client.shopify_shop_url %>" target="_blank"><%= user.client.shopify_shop_url %></a>
+                  <% else %>
+                    <span class="users-form-page__empty">Não configurado</span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="users-form-page__field">
+                <label class="crm-label">Token de Acesso</label>
+                <div class="users-form-page__readonly">
+                  <% if user.client.shopify_access_token.present? %>
+                    <span class="crm-tag crm-tag--success">Configurado</span>
+                  <% else %>
+                    <span class="crm-tag crm-tag--warning">Não configurado</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            <p class="users-form-page__section-hint">
+              Para editar as configurações Shopify, <%= link_to 'edite o cliente', edit_client_path(user.client), class: 'users-form-page__link' %>.
+            </p>
+          </div>
+        <% end %>
+
+      </div>
+
+      <div class="users-form-page__footer">
+        <%= link_to users_path, class: 'crm-btn crm-btn--secondary' do %>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+          </svg>
+          Voltar
+        <% end %>
+        <% unless read_only %>
+          <%= form.button class: 'crm-btn crm-btn--primary',
+              data: { disable_with: user.new_record? ? 'Criando...' : 'Salvando...' } do %>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <%= user.new_record? ? 'Criar Usuário' : 'Salvar Alterações' %>
+          <% end %>
+        <% end %>
+      </div>
+
+    </div>
+  </div>
+
+<% end %>

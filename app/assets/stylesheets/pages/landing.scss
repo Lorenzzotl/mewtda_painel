@@ -1,0 +1,3990 @@
+// Landing page pública (home/index.html.erb).
+// Extraído do <style> inline do view para entrar no pipeline de precompile do Sprockets.
+// Classes com prefixo mwtda-lp-* (não confundir com o .lp-* antigo de pages/institutional.scss).
+// A fonte do Google Fonts é carregada via <link> na própria view (home/index.html.erb),
+// não por @import aqui: um @import CSS precisa ser a primeira regra do stylesheet, e este
+// arquivo entra concatenado depois de vários outros no bundle do admin.scss.
+
+  /* -----------------------------------------------------------------
+     1. TOKENS
+     (também no controle remoto e no efeito de troca de canal, que ficam
+     fora de .mwtda-lp — ver seções 16 e 17)
+     ----------------------------------------------------------------- */
+  .mwtda-lp,
+  .mwtda-lp-remote,
+  .mwtda-lp-zap {
+    /* neutros (tema claro, no estilo da kobe.io: fundo branco, texto preto) */
+    --mw-bg: #ffffff;
+    --mw-bg-elevated: #ffffff;
+    --mw-bg-tint: #f5f6f8;
+    --mw-bg-dark: #0b0c10;
+    --mw-border: rgba(11, 12, 16, 0.08);
+    --mw-border-strong: rgba(11, 12, 16, 0.16);
+
+    /* texto */
+    --mw-fg: #0b0c10;
+    --mw-fg-muted: #5c6373;
+
+    /* marca */
+    --mw-primary: #fc7107;
+    --mw-primary-light: #ff8a33;
+    --mw-navy: #00247e;
+
+    /* tipografia */
+    --mw-font-heading: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --mw-font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* layout */
+    --mw-radius-sm: 10px;
+    --mw-radius: 18px;
+    --mw-radius-lg: 28px;
+    --mw-container: 1180px;
+
+    /* estado de scroll, controlado via JS (scroll_effects.js) */
+    --mw-scroll-y: 0px;
+    --mw-progress: 0;
+  }
+
+  .mwtda-lp {
+    /*
+      Isolamento de layout: se essa página for renderizada dentro do
+      layout padrão da aplicação (ex: shell com sidebar em display:flex),
+      o .mwtda-lp precisa se comportar como uma página própria — travada na
+      viewport inteira, com seu próprio scroll — e não como mais uma
+      coluna dentro do flex/grid do shell (era isso que causava o
+      efeito "lateral"/bugado).
+      Ideal a longo prazo: renderizar esta view com um layout próprio,
+      sem sidebar (ex: `layout: false` ou `layout: 'landing'` na
+      controller/action correspondente). Esse fix em CSS garante que
+      funcione mesmo se continuar dentro do layout atual.
+    */
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    float: none !important;
+    z-index: 9999 !important;
+    overflow-y: auto !important;
+    overflow-x: clip !important;
+    -webkit-overflow-scrolling: touch;
+    background: var(--mw-bg);
+    color: var(--mw-fg);
+    font-family: var(--mw-font-body);
+    line-height: 1.6;
+  }
+
+  /* qualquer classe genérica do app (grid/col/row/flex de framework) que
+     bata em ".mwtda-lp" ou em seus filhos diretos de seção não deve mudar
+     o comportamento de bloco empilhado verticalmente */
+  .mwtda-lp,
+  .mwtda-lp * {
+    box-sizing: border-box;
+  }
+
+  .mwtda-lp > * {
+    flex: none !important;
+    align-self: auto !important;
+  }
+
+  .mwtda-lp-hero,
+  .mwtda-lp-section,
+  .mwtda-lp-cta,
+  .mwtda-lp-footer {
+    display: block !important;
+    position: relative;
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .mwtda-lp img {
+    max-width: 100%;
+    display: block;
+  }
+
+  .mwtda-lp a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .mwtda-lp ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mwtda-lp * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     2. UTILITÁRIOS DE REVEAL (scroll)
+     -----------------------------------------------------------------
+     Uso: adicione data-reveal no elemento pai de uma grade/lista.
+     O JS só alterna a classe .is-visible quando o elemento entra na
+     viewport — todo o "como" da animação vive aqui no CSS. Os filhos
+     diretos recebem um atraso escalonado via nth-child.
+  */
+  [data-reveal] {
+    --reveal-y: 28px;
+  }
+
+  [data-reveal] > * {
+    opacity: 0;
+    transform: translateY(var(--reveal-y));
+    filter: blur(6px);
+    transition:
+      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-reveal].is-visible > * {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+
+  [data-reveal] > *:nth-child(1) { transition-delay: 0ms; }
+  [data-reveal] > *:nth-child(2) { transition-delay: 90ms; }
+  [data-reveal] > *:nth-child(3) { transition-delay: 180ms; }
+  [data-reveal] > *:nth-child(4) { transition-delay: 270ms; }
+  [data-reveal] > *:nth-child(5) { transition-delay: 360ms; }
+  [data-reveal] > *:nth-child(6) { transition-delay: 450ms; }
+
+  /* variante para revelar o próprio elemento (não os filhos) */
+  [data-reveal-self] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-reveal-self].is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* -----------------------------------------------------------------
+     3. BOTÕES / BADGES
+     ----------------------------------------------------------------- */
+  .mwtda-lp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    font-family: var(--mw-font-heading);
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition:
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      background 0.35s ease,
+      border-color 0.35s ease,
+      color 0.35s ease;
+  }
+
+  .mwtda-lp-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .mwtda-lp-btn--primary {
+    background: linear-gradient(135deg, var(--mw-primary-light), var(--mw-primary));
+    color: #1a0800;
+    box-shadow: 0 8px 24px -8px rgba(252, 113, 7, 0.55);
+  }
+
+  .mwtda-lp-btn--primary:hover {
+    box-shadow: 0 12px 32px -8px rgba(252, 113, 7, 0.75);
+  }
+
+  .mwtda-lp-btn--outline {
+    background: transparent;
+    border-color: var(--mw-border-strong);
+    color: var(--mw-fg);
+  }
+
+  .mwtda-lp-btn--outline:hover {
+    border-color: var(--mw-primary-light);
+    color: var(--mw-primary-light);
+  }
+
+  .mwtda-lp-btn--outline-light {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--mw-fg);
+  }
+
+  .mwtda-lp-btn--outline-light:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* botão escuro (CTA das 3 partes, como os botões pretos da kobe.io) */
+  .mwtda-lp-btn--dark,
+  .mwtda-lp a.mwtda-lp-btn--dark {
+    background: var(--mw-bg-dark);
+    color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(11, 12, 16, 0.6);
+  }
+
+  .mwtda-lp-btn--dark:hover {
+    background: #22252e;
+  }
+
+  .mwtda-lp-btn--lg {
+    padding: 0.95rem 2rem;
+    font-size: 1rem;
+  }
+
+  .mwtda-lp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(252, 113, 7, 0.12);
+    border: 1px solid rgba(252, 113, 7, 0.35);
+    color: var(--mw-primary-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .mwtda-lp-eyebrow {
+    display: inline-block;
+    font-family: var(--mw-font-heading);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--mw-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  /* -----------------------------------------------------------------
+     5. HERO
+     ----------------------------------------------------------------- */
+  .mwtda-lp-hero {
+    position: relative;
+    padding: 6rem 1.5rem 8rem;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .mwtda-lp-hero::before,
+  .mwtda-lp-hero::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .mwtda-lp-hero::before {
+    width: 700px;
+    height: 700px;
+    top: -220px;
+    left: 50%;
+    transform: translate(-50%, calc(var(--mw-scroll-y) * 0.18));
+    background: radial-gradient(circle, rgba(252, 113, 7, 0.18), transparent 70%);
+  }
+
+  .mwtda-lp-hero::after {
+    width: 520px;
+    height: 520px;
+    top: 120px;
+    right: -160px;
+    transform: translateY(calc(var(--mw-scroll-y) * -0.1));
+    background: radial-gradient(circle, rgba(51, 85, 255, 0.14), transparent 70%);
+  }
+
+  .mwtda-lp-hero__inner {
+    position: relative;
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .mwtda-lp-hero__inner > * {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: mw-hero-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .mwtda-lp-hero__inner > .mwtda-lp-hero__logo3d { animation-delay: 0s; }
+  .mwtda-lp-hero__inner > .mwtda-lp-badge { animation-delay: 0.05s; }
+  .mwtda-lp-hero__inner > .mwtda-lp-hero__headline { animation-delay: 0.18s; }
+  .mwtda-lp-hero__inner > .mwtda-lp-hero__subheadline { animation-delay: 0.32s; }
+  .mwtda-lp-hero__inner > .mwtda-lp-hero__ctas { animation-delay: 0.46s; }
+
+  @keyframes mw-hero-in {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .mwtda-lp-hero__logo3d {
+    // clamp() em vez de min() — o LibSass (gem `sass`, motor deste projeto)
+    // tem uma função min() própria que tenta resolver em build-time e quebra
+    // ao misturar px com vw; clamp() não colide e passa direto pro CSS.
+    width: clamp(0px, 88vw, 460px);
+    height: 150px;
+    margin-bottom: 0.75rem;
+    // fallback estático (aparece atrás do canvas; some visualmente assim que
+    // o WebGL desenha por cima — cobre o caso de JS/WebGL falhar)
+    background-image: image-url('admin/logonovo.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+  }
+
+  .mwtda-lp-hero__logo3d-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .mwtda-lp-hero__headline {
+    margin: 1.5rem 0 1.25rem;
+    font-family: var(--mw-font-heading);
+    font-size: clamp(2.25rem, 5vw, 3.75rem);
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #0b0c10 0%, #3b4150 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .mwtda-lp-hero__subheadline {
+    max-width: 560px;
+    color: var(--mw-fg-muted);
+    font-size: 1.1rem;
+  }
+
+  .mwtda-lp-hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2.25rem;
+  }
+
+  /* -----------------------------------------------------------------
+     6. MARQUEE (usado pelas faixas de logos de clientes)
+     ----------------------------------------------------------------- */
+  @keyframes mw-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* -----------------------------------------------------------------
+     6b. CLIENTS — duas faixas de logos em sentidos opostos, dentro de um
+     cartão (animação mw-marquee, logo acima)
+     ----------------------------------------------------------------- */
+  .mwtda-lp-clients {
+    padding: 6rem 1.5rem 5rem;
+  }
+
+  .mwtda-lp-clients__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  // .mwtda-lp-clients__inner na frente: .mwtda-lp-section__title/__lead
+  // vêm depois no arquivo e zerariam as margens laterais (título descentralizado)
+  .mwtda-lp-clients__inner .mwtda-lp-clients__headline,
+  .mwtda-lp-clients__inner .mwtda-lp-clients__lead {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .mwtda-lp-clients__lead {
+    margin-bottom: 2.5rem;
+  }
+
+  .mwtda-lp-clients__board {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem 0;
+    border-radius: var(--mw-radius-lg);
+    background: var(--mw-bg-tint);
+    border: 1px solid var(--mw-border);
+  }
+
+  .mwtda-lp-clients__strip {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  }
+
+  .mwtda-lp-clients__track {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: max-content;
+    animation: mw-marquee 40s linear infinite;
+  }
+
+  .mwtda-lp-clients__track--reverse {
+    animation-direction: reverse;
+    animation-duration: 46s;
+  }
+
+  .mwtda-lp-clients__board:hover .mwtda-lp-clients__track {
+    animation-play-state: paused;
+  }
+
+  .mwtda-lp-clients__tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 190px;
+    height: 88px;
+    padding: 0 1.75rem;
+    flex-shrink: 0;
+    border-radius: var(--mw-radius);
+    background: var(--mw-bg);
+    border: 1px solid var(--mw-border);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .mwtda-lp-clients__tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px -18px rgba(11, 12, 16, 0.35);
+  }
+
+  .mwtda-lp-clients__logo {
+    display: block;
+    max-height: 36px;
+    max-width: 100%;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.7;
+    transition: opacity 0.25s ease;
+    // logos de clientes vêm em cores/variantes bem diferentes (várias são
+    // versões "negativo" brancas); pra ficarem legíveis no fundo claro e
+    // uniformes, vira tudo silhueta escura — brightness(0) zera a cor
+    // mantendo o alfa.
+    filter: brightness(0);
+  }
+
+  .mwtda-lp-clients__tile:hover .mwtda-lp-clients__logo {
+    opacity: 1;
+  }
+
+  @media (max-width: 640px) {
+    .mwtda-lp-clients__tile {
+      width: 150px;
+      height: 72px;
+      padding: 0 1.25rem;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     7. SECTIONS (base)
+     ----------------------------------------------------------------- */
+  .mwtda-lp-section {
+    position: relative;
+    padding: 6.5rem 1.5rem;
+  }
+
+  .mwtda-lp-section--tint {
+    background: var(--mw-bg-tint);
+    border-top: 1px solid var(--mw-border);
+    border-bottom: 1px solid var(--mw-border);
+  }
+
+  .mwtda-lp-section__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+  }
+
+  .mwtda-lp-section__title {
+    max-width: 700px;
+    font-family: var(--mw-font-heading);
+    font-size: clamp(1.9rem, 3.4vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+  }
+
+  .mwtda-lp-section__lead {
+    max-width: 600px;
+    color: var(--mw-fg-muted);
+    font-size: 1.05rem;
+    margin-bottom: 3rem;
+  }
+
+  /* -----------------------------------------------------------------
+     8. CARDS (base compartilhada)
+     ----------------------------------------------------------------- */
+  .mwtda-lp-card {
+    position: relative;
+    background: linear-gradient(160deg, var(--mw-bg-elevated), var(--mw-bg));
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius);
+    padding: 2rem;
+    transition:
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.45s ease,
+      box-shadow 0.45s ease;
+  }
+
+  .mwtda-lp-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(252, 113, 7, 0.35);
+    box-shadow: 0 20px 40px -20px rgba(11, 12, 16, 0.25);
+  }
+
+  /* --- intro cards (topo) --- */
+  .mwtda-lp-intro-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .mwtda-lp-intro-card__icon {
+    font-size: 1.5rem;
+    color: var(--mw-primary-light);
+    margin-bottom: 1.25rem;
+  }
+
+  .mwtda-lp-intro-card h2 {
+    font-family: var(--mw-font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0 0.6rem;
+  }
+
+  .mwtda-lp-intro-card p {
+    color: var(--mw-fg-muted);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  /* --- feature cards (recursos) --- */
+  .mwtda-lp-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .mwtda-lp-ecommerce__cta {
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+
+  .mwtda-lp-feature-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--mw-radius-sm);
+    background: linear-gradient(135deg, rgba(252, 113, 7, 0.22), rgba(0, 36, 126, 0.35));
+    color: var(--mw-primary-light);
+    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .mwtda-lp-feature-card h3 {
+    font-family: var(--mw-font-heading);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 1.1rem;
+  }
+
+  .mwtda-lp-feature-card ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .mwtda-lp-feature-card li {
+    position: relative;
+    padding-left: 1.3rem;
+    font-size: 0.92rem;
+    color: var(--mw-fg-muted);
+  }
+
+  .mwtda-lp-feature-card li::before {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    font-size: 0.7rem;
+    color: var(--mw-primary-light);
+  }
+
+  /* --- platform / integration cards --- */
+  .mwtda-lp-platform-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+
+  .mwtda-lp-platform-card {
+    text-align: center;
+  }
+
+  .mwtda-lp-platform-card__icon {
+    font-size: 2.1rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .mwtda-lp-platform-card h3 {
+    font-family: var(--mw-font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+
+  .mwtda-lp-platform-card p {
+    color: var(--mw-fg-muted);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .mwtda-lp-platform-card__icon--brand {
+    color: var(--mw-primary-light);
+  }
+
+  /* --- produtos: parágrafo curto entre o título e a lista --- */
+  .mwtda-lp-feature-card__text {
+    color: var(--mw-fg-muted);
+    font-size: 0.95rem;
+    margin: -0.5rem 0 1.1rem;
+  }
+
+  /* --- em breve: 2 cards centralizados + selo --- */
+  .mwtda-lp-platform-grid--duo {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .mwtda-lp-platform-card {
+    position: relative;
+  }
+
+  .mwtda-lp-soon-tag {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.7rem;
+  }
+
+  @media (max-width: 980px) {
+    .mwtda-lp-feature-grid,
+    .mwtda-lp-intro-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .mwtda-lp-platform-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .mwtda-lp-feature-grid,
+    .mwtda-lp-intro-grid,
+    .mwtda-lp-platform-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     9. PROCESS (linha de progresso ligada ao scroll)
+     ----------------------------------------------------------------- */
+  .mwtda-lp-process-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+    padding-top: 1rem;
+  }
+
+  .mwtda-lp-process-grid::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 8.5%;
+    right: 8.5%;
+    height: 2px;
+    background: var(--mw-border-strong);
+    z-index: 0;
+  }
+
+  .mwtda-lp-process-grid::after {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 8.5%;
+    width: calc((100% - 17%) * var(--mw-progress, 0));
+    height: 2px;
+    background: linear-gradient(90deg, var(--mw-primary), var(--mw-primary-light));
+    box-shadow: 0 0 12px rgba(255, 138, 51, 0.7);
+    z-index: 1;
+    transition: width 0.1s linear;
+  }
+
+  .mwtda-lp-process-step {
+    position: relative;
+    z-index: 2;
+    text-align: left;
+  }
+
+  .mwtda-lp-process-step__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--mw-bg-elevated);
+    border: 2px solid var(--mw-border-strong);
+    font-family: var(--mw-font-heading);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--mw-fg-muted);
+    margin-bottom: 1.25rem;
+    transition: border-color 0.4s ease, color 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .mwtda-lp-process-grid[data-progress-lit-1] .mwtda-lp-process-step:nth-child(1) .mwtda-lp-process-step__number,
+  .mwtda-lp-process-grid[data-progress-lit-2] .mwtda-lp-process-step:nth-child(2) .mwtda-lp-process-step__number,
+  .mwtda-lp-process-grid[data-progress-lit-3] .mwtda-lp-process-step:nth-child(3) .mwtda-lp-process-step__number {
+    border-color: var(--mw-primary-light);
+    color: var(--mw-primary-light);
+    box-shadow: 0 0 20px rgba(255, 138, 51, 0.35);
+  }
+
+  .mwtda-lp-process-step h3 {
+    font-family: var(--mw-font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+
+  .mwtda-lp-process-step p {
+    color: var(--mw-fg-muted);
+    font-size: 0.92rem;
+    margin: 0;
+  }
+
+  @media (max-width: 860px) {
+    .mwtda-lp-process-grid {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+    }
+    .mwtda-lp-process-grid::before,
+    .mwtda-lp-process-grid::after {
+      top: 0;
+      bottom: 0;
+      left: 24px;
+      right: auto;
+      width: 2px;
+      height: auto;
+    }
+    .mwtda-lp-process-grid::after {
+      height: calc(100% * var(--mw-progress, 0));
+      width: 2px;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     10. CTA FINAL
+     ----------------------------------------------------------------- */
+  .mwtda-lp-cta {
+    position: relative;
+    text-align: center;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .mwtda-lp-cta::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    width: 900px;
+    height: 900px;
+    top: -420px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(252, 113, 7, 0.16), rgba(51, 85, 255, 0.1) 45%, transparent 75%);
+    filter: blur(40px);
+    animation: mw-cta-pulse 6s ease-in-out infinite;
+  }
+
+  @keyframes mw-cta-pulse {
+    0%, 100% { opacity: 0.75; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+  }
+
+  .mwtda-lp-cta__inner {
+    max-width: 640px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .mwtda-lp-cta__inner h2 {
+    font-family: var(--mw-font-heading);
+    font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+    font-weight: 700;
+    margin: 0 0 1rem;
+  }
+
+  .mwtda-lp-cta__inner p {
+    color: var(--mw-fg-muted);
+    font-size: 1.05rem;
+    margin: 0 0 2rem;
+  }
+
+  /* -----------------------------------------------------------------
+     11. FOOTER
+     ----------------------------------------------------------------- */
+  .mwtda-lp-footer {
+    border-top: 1px solid var(--mw-border);
+    padding: 4rem 1.5rem 2rem;
+  }
+
+  .mwtda-lp-footer__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 3rem;
+  }
+
+  .mwtda-lp-footer__brand {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+
+  .mwtda-lp-footer__logo {
+    display: block !important;
+    height: 26px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mwtda-lp-footer__brand p {
+    color: var(--mw-fg-muted);
+    font-size: 0.9rem;
+    max-width: 320px;
+    margin: 0;
+  }
+
+  .mwtda-lp-footer__badge {
+    display: block !important;
+    height: 56px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+    opacity: 0.9;
+  }
+
+  .mwtda-lp-footer__column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .mwtda-lp-footer__title {
+    font-family: var(--mw-font-heading);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--mw-fg);
+    margin-bottom: 0.25rem;
+  }
+
+  .mwtda-lp-footer__column a {
+    color: var(--mw-fg-muted);
+    font-size: 0.9rem;
+    transition: color 0.25s ease;
+  }
+
+  .mwtda-lp-footer__column a:hover {
+    color: var(--mw-primary-light);
+  }
+
+  .mwtda-lp-footer__bottom {
+    max-width: var(--mw-container);
+    margin: 3rem auto 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--mw-border);
+    font-size: 0.82rem;
+    color: var(--mw-fg-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 720px) {
+    .mwtda-lp-footer__inner {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     12. AS 3 PARTES (01 CRM · 02 Sites · 03 Apps) — texto de um lado,
+     aparelho do outro, alternando o lado a cada seção
+     ----------------------------------------------------------------- */
+  .mwtda-lp-part {
+    position: relative;
+    display: block !important;
+    width: 100% !important;
+    padding: 7rem 1.5rem;
+    overflow: hidden;
+  }
+
+  .mwtda-lp-part--tint {
+    background: var(--mw-bg-tint);
+  }
+
+  .mwtda-lp-part__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .mwtda-lp-part--flip .mwtda-lp-part__copy {
+    order: 2;
+  }
+
+  .mwtda-lp-part__label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .mwtda-lp-part__label .mwtda-lp-eyebrow {
+    margin: 0;
+  }
+
+  .mwtda-lp-part__number {
+    font-family: var(--mw-font-heading);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--mw-fg-muted);
+    padding-right: 0.75rem;
+    border-right: 1px solid var(--mw-border-strong);
+  }
+
+  .mwtda-lp-part__title {
+    font-family: var(--mw-font-heading);
+    font-size: clamp(2.1rem, 4.2vw, 3.3rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.06;
+    margin: 0 0 1.25rem;
+  }
+
+  .mwtda-lp-part__lead {
+    color: var(--mw-fg-muted);
+    font-size: 1.08rem;
+    max-width: 520px;
+    margin: 0 0 2.25rem;
+  }
+
+  /* CRM: grade 2x2 de recursos */
+  .mwtda-lp-part__features {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 2rem;
+    margin-bottom: 2.5rem !important;
+  }
+
+  .mwtda-lp-part__features strong,
+  .mwtda-lp-part__list strong {
+    display: block;
+    font-family: var(--mw-font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.25rem;
+  }
+
+  .mwtda-lp-part__list strong {
+    margin-top: 0;
+  }
+
+  .mwtda-lp-part__features p,
+  .mwtda-lp-part__list p {
+    margin: 0;
+    color: var(--mw-fg-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .mwtda-lp-part__feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(252, 113, 7, 0.1);
+    color: var(--mw-primary);
+    font-size: 1rem;
+  }
+
+  /* Sites: lista vertical com ícone ao lado */
+  .mwtda-lp-part__list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem !important;
+  }
+
+  .mwtda-lp-part__list li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .mwtda-lp-part__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.1rem;
+  }
+
+  .mwtda-lp-part__visual {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+  }
+
+  .mwtda-lp-part__glow {
+    position: absolute;
+    inset: 5% 0;
+    background:
+      radial-gradient(closest-side, rgba(252, 113, 7, 0.22), transparent 70%),
+      radial-gradient(closest-side at 75% 70%, rgba(51, 85, 255, 0.16), transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+
+  /* --- 01: notebook --- */
+  .mwtda-lp-laptop {
+    position: relative;
+    width: 100%;
+    max-width: 680px;
+    // passa um pouco da coluna no desktop, como na kobe.io
+    margin-right: -6%;
+  }
+
+  .mwtda-lp-laptop__screen {
+    position: relative;
+    padding: 2.2% 2.2% 3%;
+    border-radius: 18px 18px 6px 6px;
+    background: linear-gradient(160deg, #2b2e37, #0b0c10);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 40px 80px -40px rgba(11, 12, 16, 0.55);
+  }
+
+  .mwtda-lp-laptop__camera {
+    position: absolute;
+    top: 0.9%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: #3a3d47;
+  }
+
+  .mwtda-lp-laptop__display {
+    // a réplica do painel escala com a largura da tela do notebook (cqw)
+    container-type: inline-size;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #f4f5f7;
+  }
+
+  .mwtda-lp-laptop__display > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: left top;
+  }
+
+  .mwtda-lp-laptop__base {
+    position: relative;
+    height: 16px;
+    margin: 0 -7%;
+    border-radius: 2px 2px 14px 14px;
+    background: linear-gradient(180deg, #d9dbe1, #a9adb8);
+    box-shadow: 0 20px 30px -18px rgba(11, 12, 16, 0.5);
+  }
+
+  .mwtda-lp-laptop__base span {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 16%;
+    height: 6px;
+    transform: translateX(-50%);
+    border-radius: 0 0 8px 8px;
+    background: #9398a4;
+  }
+
+  /* réplica do painel dentro do notebook (fallback sem o print) */
+  .mwtda-lp-crm-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: var(--mw-font-body);
+    font-size: 1.3cqw;
+    color: #0b0c10;
+    background: #f4f5f7;
+  }
+
+  // layouts/global.scss aplica `* { font-size: 13px }` — aqui dentro tudo
+  // precisa herdar o tamanho em cqw pra réplica escalar junto com a tela
+  .mwtda-lp-crm-screen * {
+    font-size: inherit;
+  }
+
+  .mwtda-lp-crm-screen i {
+    font-size: 0.95em;
+  }
+
+  .mwtda-lp-crm-screen__top {
+    display: flex;
+    align-items: center;
+    gap: 2em;
+    height: 4.8em;
+    padding: 0 2em;
+    background: #0a2472;
+  }
+
+  .mwtda-lp-crm-screen__logo {
+    height: 2em;
+    width: auto;
+    filter: brightness(0) invert(1);
+  }
+
+  .mwtda-lp-crm-screen__search {
+    flex: 0 1 40%;
+    margin: 0 auto;
+    padding: 0.7em 1em;
+    border-radius: 0.6em;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .mwtda-lp-crm-screen__avatar {
+    width: 2.6em;
+    height: 2.6em;
+    border-radius: 50%;
+    background: var(--mw-primary);
+    color: #fff;
+    font-weight: 700;
+    line-height: 2.6em;
+    text-align: center;
+  }
+
+  .mwtda-lp-crm-screen__body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  .mwtda-lp-crm-screen__side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    width: 17%;
+    padding: 1.5em 1em;
+    background: #fff;
+    border-right: 1px solid #e6e8ec;
+  }
+
+  .mwtda-lp-crm-screen__side span {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.8em;
+    border-radius: 0.6em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .mwtda-lp-crm-screen__side .is-active {
+    background: #fff1e6;
+    color: var(--mw-primary);
+  }
+
+  .mwtda-lp-crm-screen__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4em;
+    padding: 1.8em;
+    min-width: 0;
+  }
+
+  .mwtda-lp-crm-screen__hero {
+    position: relative;
+    padding: 1.8em 2em;
+    border-radius: 0.8em;
+    background: #0a2472;
+    color: #fff;
+  }
+
+  .mwtda-lp-crm-screen__hero strong {
+    display: block;
+    font-size: 1.8em;
+    font-family: var(--mw-font-heading);
+  }
+
+  .mwtda-lp-crm-screen__hero small {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .mwtda-lp-crm-screen__range {
+    position: absolute;
+    top: 50%;
+    right: 2em;
+    display: flex;
+    gap: 0.3em;
+    padding: 0.3em;
+    transform: translateY(-50%);
+    border-radius: 0.6em;
+    background: rgba(255, 255, 255, 0.85);
+    color: #5c6373;
+  }
+
+  .mwtda-lp-crm-screen__range em {
+    padding: 0.5em 0.9em;
+    border-radius: 0.4em;
+    font-style: normal;
+  }
+
+  .mwtda-lp-crm-screen__range .is-active {
+    background: #fff;
+    color: #0b0c10;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .mwtda-lp-crm-screen__kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1em;
+  }
+
+  .mwtda-lp-crm-screen__kpis div {
+    padding: 1.2em;
+    border-radius: 0.6em;
+    background: #fff;
+    border: 1px solid #e6e8ec;
+    border-left: 0.35em solid var(--kpi);
+  }
+
+  .mwtda-lp-crm-screen__kpis small {
+    display: block;
+    font-size: 0.8em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #5c6373;
+  }
+
+  .mwtda-lp-crm-screen__kpis b {
+    font-family: var(--mw-font-heading);
+    font-size: 2em;
+  }
+
+  .mwtda-lp-crm-screen__funnel {
+    flex: 1;
+    padding: 1.6em 2em;
+    border-radius: 0.8em;
+    background: #0a2472;
+    color: #fff;
+  }
+
+  .mwtda-lp-crm-screen__funnel > div {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 1.4em;
+  }
+
+  .mwtda-lp-crm-screen__funnel span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mwtda-lp-crm-screen__funnel span:first-child {
+    border-left: 0;
+  }
+
+  .mwtda-lp-crm-screen__funnel span i {
+    width: 3.2em;
+    height: 3.2em;
+    border-radius: 0.6em;
+    background: rgba(255, 255, 255, 0.1);
+    line-height: 3.2em;
+    text-align: center;
+  }
+
+  .mwtda-lp-crm-screen__funnel b {
+    font-family: var(--mw-font-heading);
+    font-size: 2.4em;
+    line-height: 1.1;
+  }
+
+  .mwtda-lp-crm-screen__funnel small {
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .mwtda-lp-crm-screen__funnel em {
+    position: relative;
+    width: 45%;
+    height: 0.4em;
+    border-radius: 1em;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+  }
+
+  .mwtda-lp-crm-screen__funnel em::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--pct);
+    background: linear-gradient(90deg, #3b82f6, #22c55e);
+  }
+
+  /* --- 02: janela de navegador (desktop) + celular (mobile) --- */
+  .mwtda-lp-devices {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    padding: 0 0 4.5rem;
+    margin-left: -4%;
+  }
+
+  .mwtda-lp-browser {
+    overflow: hidden;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid var(--mw-border);
+    box-shadow: 0 40px 80px -40px rgba(11, 12, 16, 0.45);
+  }
+
+  .mwtda-lp-browser__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    background: #f1f2f5;
+    border-bottom: 1px solid var(--mw-border);
+  }
+
+  .mwtda-lp-browser__bar > span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff5f57;
+  }
+
+  .mwtda-lp-browser__bar > span:nth-child(2) { background: #febc2e; }
+  .mwtda-lp-browser__bar > span:nth-child(3) { background: #28c840; }
+
+  .mwtda-lp-browser__bar em {
+    flex: 0 1 55%;
+    margin: 0 auto;
+    padding: 4px 10px;
+    border-radius: 7px;
+    background: #fff;
+    color: var(--mw-fg-muted);
+    font: 500 0.72rem var(--mw-font-body);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mwtda-lp-browser__bar em i {
+    font-size: 0.6rem;
+    margin-right: 3px;
+  }
+
+  .mwtda-lp-browser__shot {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
+  .mwtda-lp-devices__phone {
+    position: absolute;
+    right: -6%;
+    bottom: 0;
+    width: 34%;
+    min-width: 150px;
+  }
+
+  .mwtda-lp-devices__phone .mwtda-lp-shop__phone {
+    width: 100%;
+    padding: 7px;
+    border-radius: 30px;
+  }
+
+  .mwtda-lp-devices__phone .mwtda-lp-shop__screen {
+    border-radius: 24px;
+  }
+
+  .mwtda-lp-devices__phone .mwtda-lp-shop__notch {
+    top: 12px;
+    width: 30%;
+    height: 14px;
+  }
+
+  .mwtda-lp-devices__phone-shot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .mwtda-lp-devices__case {
+    position: absolute;
+    left: 4%;
+    bottom: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid var(--mw-border);
+    box-shadow: 0 18px 40px -18px rgba(11, 12, 16, 0.35);
+    transition: transform 0.3s ease;
+  }
+
+  .mwtda-lp-devices__case:hover {
+    transform: translateY(-3px);
+  }
+
+  .mwtda-lp-devices__case span {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mw-primary);
+  }
+
+  .mwtda-lp-devices__case strong {
+    font-family: var(--mw-font-heading);
+    font-size: 1.05rem;
+  }
+
+  .mwtda-lp-devices__case em {
+    font-style: normal;
+    font-size: 0.8rem;
+    color: var(--mw-fg-muted);
+  }
+
+  .mwtda-lp-devices__case em i {
+    font-size: 0.65rem;
+    margin-left: 2px;
+  }
+
+  @media (max-width: 980px) {
+    .mwtda-lp-part {
+      padding: 5rem 1.5rem;
+    }
+
+    .mwtda-lp-part__inner {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+    }
+
+    .mwtda-lp-part--flip .mwtda-lp-part__copy {
+      order: 0;
+    }
+
+    .mwtda-lp-laptop,
+    .mwtda-lp-devices {
+      margin: 0 auto;
+    }
+
+    .mwtda-lp-devices__phone {
+      right: 0;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .mwtda-lp-part__features {
+      grid-template-columns: 1fr;
+    }
+
+    .mwtda-lp-laptop__base {
+      margin: 0 -4%;
+    }
+
+    .mwtda-lp-devices__case {
+      left: 0;
+      padding: 0.65rem 0.85rem;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     13. APPS (03) — celular com vitrine de e-commerce (inspirado na kobe.io)
+     ----------------------------------------------------------------- */
+  /* --- abas de segmento --- */
+  .mwtda-lp-shop__segments-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mw-fg-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .mwtda-lp-shop__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mwtda-lp-shop__tab {
+    appearance: none;
+    border: 1px solid var(--mw-border-strong);
+    background: var(--mw-bg);
+    color: var(--mw-fg-muted);
+    font: 500 0.9rem var(--mw-font-body);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+
+  .mwtda-lp-shop__tab:hover {
+    color: var(--mw-fg);
+    border-color: rgba(252, 113, 7, 0.45);
+  }
+
+  .mwtda-lp-shop__tab[aria-selected="true"] {
+    background: var(--mw-primary);
+    border-color: var(--mw-primary);
+    color: #fff;
+  }
+
+  .mwtda-lp-shop__tab:focus-visible {
+    outline: 2px solid var(--mw-primary-light);
+    outline-offset: 2px;
+  }
+
+  /* textos de cada segmento empilhados no mesmo espaço (sem pular layout) */
+  .mwtda-lp-shop__pitches {
+    display: grid;
+    margin: 1.1rem 0 2.25rem;
+  }
+
+  .mwtda-lp-shop__pitch {
+    grid-area: 1 / 1;
+    margin: 0;
+    padding-left: 1rem;
+    border-left: 2px solid var(--mw-primary);
+    color: var(--mw-fg);
+    font-size: 1rem;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+  }
+
+  .mwtda-lp-shop__pitch[data-active="true"] {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .mwtda-lp-shop__pills {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--mw-fg-muted);
+  }
+
+  .mwtda-lp-shop__pills i {
+    color: var(--mw-primary);
+    font-size: 0.75rem;
+    margin-right: 0.25rem;
+  }
+
+  .mwtda-lp-shop__phone {
+    position: relative;
+    width: 300px;
+    aspect-ratio: 9 / 19;
+    padding: 11px;
+    border-radius: 46px;
+    background: linear-gradient(145deg, #2a2d38, #0b0c10);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+      0 40px 80px -30px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(0, 0, 0, 0.6);
+    transform: rotate(-3deg);
+    animation: mw-shop-float 6s ease-in-out infinite;
+  }
+
+  // celular "parado" (seção Sites): sem inclinação nem flutuação
+  .mwtda-lp-shop__phone--static {
+    transform: none;
+    animation: none;
+  }
+
+  @keyframes mw-shop-float {
+    0%, 100% { transform: rotate(-3deg) translateY(0); }
+    50%      { transform: rotate(-3deg) translateY(-10px); }
+  }
+
+  .mwtda-lp-shop__notch {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    width: 86px;
+    height: 24px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: #000;
+    z-index: 3;
+  }
+
+  .mwtda-lp-shop__screen {
+    position: relative;
+    height: 100%;
+    border-radius: 36px;
+    overflow: hidden;
+    background: #fff;
+    color: #111827;
+    font-family: var(--mw-font-body);
+  }
+
+  .mwtda-lp-shop__statusbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 22px 0;
+    height: 36px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-shop__statusbar i {
+    font-size: 0.6rem;
+    margin-left: 2px;
+  }
+
+  /* cada loja (segmento) ocupa a tela inteira; só a ativa aparece */
+  .mwtda-lp-shop__store {
+    position: absolute;
+    inset: 36px 0 0;
+    padding: 0 14px 64px;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .mwtda-lp-shop__store[data-active="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .mwtda-lp-shop__store-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px 10px;
+    font-size: 0.85rem;
+  }
+
+  .mwtda-lp-shop__store-name {
+    font-family: var(--mw-font-heading);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    color: var(--shop-accent);
+  }
+
+  .mwtda-lp-shop__bag {
+    position: relative;
+  }
+
+  .mwtda-lp-shop__bag em {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    min-width: 15px;
+    height: 15px;
+    border-radius: 999px;
+    background: var(--shop-accent);
+    color: #fff;
+    font: 700 0.55rem/15px var(--mw-font-body);
+    text-align: center;
+  }
+
+  .mwtda-lp-shop__search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: #f1f2f5;
+    color: #9ca3af;
+    font-size: 0.68rem;
+    margin-bottom: 10px;
+  }
+
+  .mwtda-lp-shop__banner {
+    position: relative;
+    height: 128px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--shop-accent), #111827);
+  }
+
+  .mwtda-lp-shop__banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mwtda-lp-shop__banner-copy {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+    padding: 12px;
+    background: linear-gradient(180deg, transparent 20%, rgba(0, 0, 0, 0.72));
+    color: #fff;
+  }
+
+  .mwtda-lp-shop__banner-copy span {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  .mwtda-lp-shop__banner-copy strong {
+    font-family: var(--mw-font-heading);
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+
+  .mwtda-lp-shop__banner-copy em {
+    align-self: flex-start;
+    margin-top: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff;
+    color: #111827;
+    font: 600 0.58rem var(--mw-font-body);
+  }
+
+  .mwtda-lp-shop__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .mwtda-lp-shop__product {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .mwtda-lp-shop__product-img {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #eef0f4;
+    margin-bottom: 5px;
+  }
+
+  .mwtda-lp-shop__product-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mwtda-lp-shop__product-img i {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 0.55rem;
+    line-height: 20px;
+    text-align: center;
+  }
+
+  .mwtda-lp-shop__product-name {
+    font-size: 0.64rem;
+    color: #4b5563;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mwtda-lp-shop__product-price {
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .mwtda-lp-shop__product-add {
+    margin-top: 4px;
+    padding: 3px 0;
+    border-radius: 7px;
+    border: 1px solid var(--shop-accent);
+    color: var(--shop-accent);
+    font-size: 0.56rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .mwtda-lp-shop__checkout {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 2;
+    padding: 11px;
+    border-radius: 14px;
+    background: #111827;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.5);
+  }
+
+  .mwtda-lp-shop__checkout i {
+    font-size: 0.6rem;
+    margin-right: 4px;
+  }
+
+  /* --- notificações de venda flutuando ao redor do celular --- */
+  .mwtda-lp-shop__notification {
+    position: absolute;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 250px;
+    padding: 0.7rem 0.85rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--mw-border);
+    color: #111827;
+    box-shadow: 0 18px 40px -18px rgba(11, 12, 16, 0.4);
+    backdrop-filter: blur(10px);
+    font-size: 0.75rem;
+    line-height: 1.3;
+    animation: mw-shop-notify 9s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 3s);
+    opacity: 0;
+  }
+
+  .mwtda-lp-shop__notification strong {
+    display: block;
+    font-size: 0.8rem;
+  }
+
+  .mwtda-lp-shop__notification span:not(.mwtda-lp-shop__notification-icon) {
+    display: block;
+    color: #6b7280;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .mwtda-lp-shop__notification small {
+    align-self: flex-start;
+    margin-left: auto;
+    color: #9ca3af;
+    font-size: 0.62rem;
+  }
+
+  .mwtda-lp-shop__notification-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--mw-primary);
+    color: #fff;
+    font-size: 0.85rem;
+  }
+
+  .mwtda-lp-shop__notification--sale { top: 12%; left: -4%; }
+  .mwtda-lp-shop__notification--pix { top: 44%; right: -6%; }
+  .mwtda-lp-shop__notification--pix .mwtda-lp-shop__notification-icon { background: #16a34a; }
+  .mwtda-lp-shop__notification--cart { bottom: 14%; left: 0; }
+  .mwtda-lp-shop__notification--cart .mwtda-lp-shop__notification-icon { background: #2563eb; }
+
+  /* cada notificação "chega", fica um tempo e sai — em cascata (--i) */
+  @keyframes mw-shop-notify {
+    0%       { opacity: 0; transform: translateY(12px) scale(0.96); }
+    6%, 30%  { opacity: 1; transform: none; }
+    38%, 100% { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  }
+
+  @media (max-width: 520px) {
+    .mwtda-lp-shop__phone {
+      width: 260px;
+    }
+
+    .mwtda-lp-shop__notification {
+      width: 220px;
+      font-size: 0.7rem;
+    }
+
+    .mwtda-lp-shop__notification span:not(.mwtda-lp-shop__notification-icon) {
+      white-space: normal;
+    }
+
+    .mwtda-lp-shop__notification--sale { left: 0; }
+    .mwtda-lp-shop__notification--pix { right: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mwtda-lp-shop__phone {
+      animation: none;
+    }
+
+    .mwtda-lp-shop__notification {
+      animation: none;
+      opacity: 1;
+    }
+
+    .mwtda-lp-shop__notification--pix,
+    .mwtda-lp-shop__notification--cart {
+      display: none;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     14. LOGOS DE PRODUTO (mewtda ||||| CRM) + visão geral dos produtos
+     ----------------------------------------------------------------- */
+  .mwtda-lp-plogo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 1.15rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  // layouts/global.scss aplica `* { font-size: 13px }` — o logo escala
+  // tudo em em a partir do tamanho do próprio .mwtda-lp-plogo
+  .mwtda-lp-plogo * {
+    font-size: inherit;
+  }
+
+  .mwtda-lp-plogo__word {
+    font-family: var(--mw-font-heading);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, #22b6ff, #1d4ed8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  // mesmas 6 barras (e cores) do logo da marca
+  .mwtda-lp-plogo__bars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.09em;
+    height: 1em;
+  }
+
+  .mwtda-lp-plogo__bars i {
+    display: block;
+    width: 0.13em;
+    border-radius: 1em;
+  }
+
+  .mwtda-lp-plogo__bars i:nth-child(1) { height: 70%;  background: #7c3aed; }
+  .mwtda-lp-plogo__bars i:nth-child(2) { height: 45%;  background: #d946ef; }
+  .mwtda-lp-plogo__bars i:nth-child(3) { height: 100%; background: #fb7115; }
+  .mwtda-lp-plogo__bars i:nth-child(4) { height: 50%;  background: #f5b301; }
+  .mwtda-lp-plogo__bars i:nth-child(5) { height: 75%;  background: #22c55e; }
+  .mwtda-lp-plogo__bars i:nth-child(6) { height: 40%;  background: #14e0a4; }
+
+  .mwtda-lp-plogo__name {
+    font-family: var(--mw-font-heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--plogo);
+  }
+
+  // produto com marca própria: logo em imagem. Cada arte tem proporção
+  // diferente, então a altura é ajustada por produto pra ficarem com o
+  // mesmo peso visual (Sua Loja tem letras ocupando a altura toda).
+  .mwtda-lp-plogo-img {
+    display: block;
+    height: 2.2rem;
+    width: auto;
+  }
+
+  .mwtda-lp-plogo-img--crm    { height: 2rem; }
+  .mwtda-lp-plogo-img--new    { height: 1.6rem; }
+  .mwtda-lp-plogo-img--app    { height: 2.6rem; }
+
+  /* visão geral: 4 cartões, um por produto */
+  .mwtda-lp-products {
+    padding: 2rem 1.5rem 5rem;
+  }
+
+  .mwtda-lp-products__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+  }
+
+  .mwtda-lp-products__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+
+  .mwtda-lp .mwtda-lp-products__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.75rem 1.5rem;
+    border-radius: var(--mw-radius-lg);
+    background: var(--mw-bg);
+    border: 1px solid var(--mw-border);
+    overflow: hidden;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+  }
+
+  // faixa com a cor do produto no topo do cartão
+  .mwtda-lp-products__card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: var(--plogo);
+  }
+
+  .mwtda-lp .mwtda-lp-products__card:hover {
+    transform: translateY(-6px);
+    border-color: var(--plogo);
+    box-shadow: 0 24px 40px -24px rgba(11, 12, 16, 0.35);
+  }
+
+  .mwtda-lp-products__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--plogo) 12%, transparent);
+    color: var(--plogo);
+    font-size: 1.1rem;
+  }
+
+  .mwtda-lp-products__card p {
+    flex: 1;
+    margin: 0;
+    color: var(--mw-fg-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .mwtda-lp-products__card em {
+    font-style: normal;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--plogo);
+  }
+
+  .mwtda-lp-products__card em i {
+    font-size: 0.7rem;
+    margin-left: 0.2rem;
+    transition: transform 0.25s ease;
+  }
+
+  .mwtda-lp-products__card:hover em i {
+    transform: translateX(3px);
+  }
+
+  @media (max-width: 1100px) {
+    .mwtda-lp-products__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .mwtda-lp-products__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     15. QUERO TROCAR (02) — celular com o painel de solicitações
+     ----------------------------------------------------------------- */
+  .mwtda-lp-exchange {
+    transform: rotate(3deg);
+    animation-name: mw-exchange-float;
+  }
+
+  @keyframes mw-exchange-float {
+    0%, 100% { transform: rotate(3deg) translateY(0); }
+    50%      { transform: rotate(3deg) translateY(-10px); }
+  }
+
+  // global.scss força `* { font-size: 13px }`: aqui tudo herda do body
+  .mwtda-lp-exchange__screen * {
+    font-size: inherit;
+  }
+
+  // mesmas cores do painel do Quero Trocar (fundo verde-claro, verde-escuro da marca)
+  .mwtda-lp-exchange__screen {
+    --qt-green: #04432f;
+    --qt-soft: #d3e8d0;
+    background: #f1f6f0;
+    font-size: 0.62rem;
+  }
+
+  // print real do painel: preenche a tela abaixo da status bar
+  .mwtda-lp-exchange__screen--print {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+  }
+
+  .mwtda-lp-exchange__screen--print img {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .mwtda-lp-exchange__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 12px 0;
+  }
+
+  .mwtda-lp-exchange__topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mwtda-lp-exchange__icon {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    margin-right: auto;
+  }
+
+  .mwtda-lp-exchange__store {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    border: 1px solid #c9d3c8;
+    background: #fff;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-exchange__store i {
+    font-size: 0.5rem;
+    color: #4b5563;
+  }
+
+  .mwtda-lp-exchange__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #a7e3a2;
+    color: var(--qt-green);
+    font-weight: 700;
+  }
+
+  .mwtda-lp-exchange__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .mwtda-lp-exchange__heading strong {
+    display: block;
+    font-family: var(--mw-font-heading);
+    font-size: 0.98rem;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-exchange__heading small {
+    display: block;
+    font-size: 0.52rem;
+    color: #4b5563;
+  }
+
+  .mwtda-lp-exchange__public {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: var(--qt-soft);
+    color: var(--qt-green);
+    font-size: 0.54rem;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-exchange__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .mwtda-lp-exchange__stat {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border-radius: 9px;
+    border: 1px solid #d5dcd4;
+    background: #fff;
+  }
+
+  .mwtda-lp-exchange__stat--all {
+    grid-column: 1 / -1;
+    border: 1.5px solid var(--qt-green);
+    background: #f7faf6;
+  }
+
+  .mwtda-lp-exchange__stat > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    color: #1f2937;
+  }
+
+  .mwtda-lp-exchange__stat b {
+    display: block;
+    font-size: 0.82rem;
+    line-height: 1.1;
+  }
+
+  .mwtda-lp-exchange__stat small {
+    display: block;
+    font-size: 0.5rem;
+    color: #4b5563;
+  }
+
+  .mwtda-lp-exchange__stat--all > span      { background: #cfe3cc; }
+  .mwtda-lp-exchange__stat--pending > span  { background: #fde2a0; }
+  .mwtda-lp-exchange__stat--approved > span { background: #b9ebb4; }
+  .mwtda-lp-exchange__stat--received > span { background: #fde2a0; }
+  .mwtda-lp-exchange__stat--done > span     { background: #b4e7ee; }
+  .mwtda-lp-exchange__stat--rejected > span { background: #fcc9c5; color: #b91c1c; }
+
+  .mwtda-lp-exchange__list {
+    display: flex;
+    flex-direction: column;
+    padding: 7px;
+    border-radius: 11px;
+    border: 1px solid #d5dcd4;
+    background: #fff;
+  }
+
+  .mwtda-lp-exchange__search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #e8efe7;
+    color: #4b5563;
+    font-size: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .mwtda-lp-exchange__row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 2px;
+    border-bottom: 1px solid #edf1ec;
+  }
+
+  .mwtda-lp-exchange__row:last-child {
+    border-bottom: 0;
+  }
+
+  .mwtda-lp-exchange__initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--qt-soft);
+    color: var(--qt-green);
+    font-size: 0.5rem;
+    font-weight: 700;
+  }
+
+  .mwtda-lp-exchange__row > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mwtda-lp-exchange__row b {
+    display: block;
+    font-size: 0.6rem;
+  }
+
+  .mwtda-lp-exchange__row small {
+    display: block;
+    font-size: 0.5rem;
+    color: #6b7280;
+  }
+
+  .mwtda-lp-exchange__badge {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-style: normal;
+    font-size: 0.5rem;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-exchange__badge--pending  { background: #fef3c7; color: #92400e; }
+  .mwtda-lp-exchange__badge--approved { background: #dcfce7; color: #166534; }
+  .mwtda-lp-exchange__badge--done     { background: #cffafe; color: #155e75; }
+
+  .mwtda-lp-exchange__tabbar {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 7px 8px 16px;
+    border-top: 1px solid #dde4dc;
+    background: #fff;
+  }
+
+  .mwtda-lp-exchange__tabbar span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.5rem;
+    color: #374151;
+  }
+
+  .mwtda-lp-exchange__tabbar i {
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+  }
+
+  .mwtda-lp-exchange__tabbar .is-active i {
+    background: var(--qt-soft);
+    color: var(--qt-green);
+  }
+
+  .mwtda-lp-exchange__notification--new { top: 14%; right: -6%; }
+  .mwtda-lp-exchange__notification--new .mwtda-lp-shop__notification-icon { background: #04432f; }
+  .mwtda-lp-exchange__notification--approved { bottom: 16%; left: -4%; }
+  .mwtda-lp-exchange__notification--approved .mwtda-lp-shop__notification-icon { background: #16a34a; }
+
+  @media (max-width: 520px) {
+    .mwtda-lp-exchange__notification--new { right: 0; }
+    .mwtda-lp-exchange__notification--approved { left: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mwtda-lp-exchange {
+      animation: none;
+    }
+
+    .mwtda-lp-exchange__notification--approved {
+      display: none;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     16. CONTROLE REMOTO — menu fixo no canto inferior esquerdo (substitui
+     o cabeçalho). Tudo em `em`: o tamanho do controle inteiro sai do
+     font-size de .mwtda-lp-remote.
+     ----------------------------------------------------------------- */
+  .mwtda-lp-remote {
+    position: fixed;
+    left: 20px;
+    bottom: 24px;
+    z-index: 10001;
+    font-size: 14px;
+    font-family: var(--mw-font-heading);
+    color: #f2f3f6;
+  }
+
+  .mwtda-lp-remote,
+  .mwtda-lp-remote * {
+    box-sizing: border-box;
+  }
+
+  // toque no celular: sem espera de duplo toque (zoom) e sem o flash cinza
+  .mwtda-lp-remote a,
+  .mwtda-lp-remote button {
+    color: inherit;
+    text-decoration: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  // layouts/global.scss aplica `* { font-size: 13px }` — aqui dentro tudo
+  // herda, e cada peça define o próprio tamanho em em
+  .mwtda-lp-remote * {
+    font-size: inherit;
+  }
+
+  .mwtda-lp-remote button {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .mwtda-lp-remote__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75em;
+    width: 5.6em;
+    padding: 0.9em 0.6em 1em;
+    border-radius: 2.8em 2.8em 2.2em 2.2em;
+    background: linear-gradient(170deg, #353945 0%, #16171c 55%, #0b0c10 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(0, 0, 0, 0.5),
+      0 30px 50px -20px rgba(11, 12, 16, 0.55);
+    transform: rotate(-4deg);
+    transform-origin: 50% 50%;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mwtda-lp-remote__body:hover,
+  .mwtda-lp-remote__body:focus-within {
+    transform: rotate(0deg);
+  }
+
+  /* LED de infravermelho + "ondas" do sinal a cada comando */
+  .mwtda-lp-remote__top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55em;
+  }
+
+  .mwtda-lp-remote__ir {
+    position: relative;
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: #4a1f08;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
+  }
+
+  .mwtda-lp-remote__ir::before,
+  .mwtda-lp-remote__ir::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    width: 1.4em;
+    height: 1.4em;
+    border: 2px solid var(--mw-primary);
+    border-color: var(--mw-primary) transparent transparent;
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate(-50%, 50%) scale(0.4);
+    pointer-events: none;
+  }
+
+  .mwtda-lp-remote__ir.is-sending {
+    animation: mw-remote-led 0.5s ease;
+  }
+
+  .mwtda-lp-remote__ir.is-sending::before {
+    animation: mw-remote-wave 0.7s ease-out;
+  }
+
+  .mwtda-lp-remote__ir.is-sending::after {
+    animation: mw-remote-wave 0.7s ease-out 0.15s;
+  }
+
+  @keyframes mw-remote-led {
+    0%, 100% { background: #4a1f08; box-shadow: none; }
+    20%, 60% { background: #ff8a33; box-shadow: 0 0 10px 3px rgba(252, 113, 7, 0.8); }
+  }
+
+  @keyframes mw-remote-wave {
+    0%   { opacity: 0.9; transform: translate(-50%, 50%) scale(0.4); }
+    100% { opacity: 0;   transform: translate(-50%, 0) scale(2.4); }
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__power {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1em;
+    height: 2.1em;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff7a4d, #d6260a 70%);
+    color: #fff;
+    font-size: 0.95em;
+    box-shadow: 0 3px 0 #7a1504, 0 6px 14px -4px rgba(214, 38, 10, 0.7);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__power:hover {
+    box-shadow: 0 3px 0 #7a1504, 0 0 16px 2px rgba(255, 90, 60, 0.6);
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__power:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #7a1504, 0 2px 6px -2px rgba(214, 38, 10, 0.7);
+  }
+
+  /* visor LCD com o canal atual */
+  .mwtda-lp-remote__screen {
+    position: relative;
+    width: 100%;
+    padding: 0.45em 0.4em;
+    border-radius: 0.6em;
+    background: linear-gradient(180deg, #0c2417, #07160e);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: #7dfca8;
+    text-align: center;
+    text-shadow: 0 0 6px rgba(125, 252, 168, 0.55);
+    overflow: hidden;
+  }
+
+  // linhas de varredura do LCD
+  .mwtda-lp-remote__screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+  }
+
+  .mwtda-lp-remote__screen.is-changing {
+    animation: mw-remote-flicker 0.35s steps(3);
+  }
+
+  @keyframes mw-remote-flicker {
+    0%   { opacity: 0.2; }
+    50%  { opacity: 1; }
+    75%  { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  .mwtda-lp-remote__ch {
+    display: block;
+    font-size: 0.55em;
+    letter-spacing: 0.12em;
+    opacity: 0.75;
+  }
+
+  .mwtda-lp-remote__label {
+    display: block;
+    font-size: 0.68em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* CH ▲ / ▼ */
+  .mwtda-lp-remote__rocker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 2.5em;
+    padding: 0.2em 0;
+    border-radius: 1.3em;
+    background: linear-gradient(180deg, #2b2e37, #1a1c22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 #050507;
+  }
+
+  .mwtda-lp-remote__rocker button {
+    width: 100%;
+    height: 1.9em;
+    background: transparent;
+    color: #d6d9e0;
+    font-size: 0.8em;
+    border-radius: 1em;
+    transition: color 0.2s ease, background 0.2s ease;
+  }
+
+  .mwtda-lp-remote__rocker button:hover {
+    color: var(--mw-primary-light);
+  }
+
+  .mwtda-lp-remote__rocker button:active {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .mwtda-lp-remote__rocker span {
+    font-size: 0.55em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #7b8190;
+  }
+
+  /* teclas numéricas = produtos */
+  .mwtda-lp-remote__keys {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35em;
+    width: 100%;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__key {
+    position: relative;
+    // sem isso a legenda mais longa (EN/ES) alarga a coluna do grid
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 2.4em;
+    border-radius: 0.7em;
+    background: linear-gradient(180deg, #30333d, #1c1e24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 #050507;
+    color: #f2f3f6;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, color 0.2s ease;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__key:active,
+  .mwtda-lp-remote .mwtda-lp-remote__mini:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  .mwtda-lp-remote__key b {
+    font-size: 0.95em;
+    line-height: 1;
+  }
+
+  .mwtda-lp-remote__key small {
+    max-width: 100%;
+    margin-top: 0.2em;
+    padding: 0 0.2em;
+    font-size: 0.45em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8d93a1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__key[aria-current] b {
+    color: var(--mw-primary-light);
+    text-shadow: 0 0 8px rgba(252, 113, 7, 0.7);
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__key[aria-current]::after {
+    content: '';
+    position: absolute;
+    top: 0.3em;
+    right: 0.3em;
+    width: 0.25em;
+    height: 0.25em;
+    border-radius: 50%;
+    background: var(--mw-primary);
+    box-shadow: 0 0 6px var(--mw-primary);
+  }
+
+  /* início / clientes / contato */
+  .mwtda-lp-remote__extras {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__mini {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #30333d, #1c1e24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 #050507;
+    color: #aeb3bf;
+    font-size: 0.8em;
+    transition: transform 0.1s ease, color 0.2s ease;
+  }
+
+  .mwtda-lp-remote .mwtda-lp-remote__mini:hover,
+  .mwtda-lp-remote .mwtda-lp-remote__mini[aria-current] {
+    color: var(--mw-primary-light);
+  }
+
+  /* idioma: 3 teclinhas */
+  .mwtda-lp-remote__lang {
+    display: flex;
+    gap: 0.2em;
+    width: 100%;
+  }
+
+  .mwtda-lp-remote__lang .mwtda-lp-lang__option {
+    flex: 1;
+    padding: 0.3em 0;
+    border-radius: 0.4em;
+    background: #1c1e24;
+    color: #7b8190;
+    font-size: 0.5em;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .mwtda-lp-remote__lang .mwtda-lp-lang__option.is-active {
+    background: var(--mw-primary);
+    color: #fff;
+  }
+
+  /* "marca" do controle */
+  .mwtda-lp-remote__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    font-size: 0.6em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #8d93a1;
+  }
+
+  .mwtda-lp-remote__brand .mwtda-lp-plogo__bars {
+    height: 0.9em;
+  }
+
+  /* dica com o nome do canal ao passar o mouse (só com mouse) */
+  @media (hover: hover) {
+    .mwtda-lp-remote [data-tip]:hover::before {
+      content: attr(data-tip);
+      position: absolute;
+      left: calc(100% + 0.9em);
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 0.35em 0.7em;
+      border-radius: 0.5em;
+      background: var(--mw-bg-dark);
+      color: #fff;
+      font-family: var(--mw-font-body);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .mwtda-lp-remote__rocker button {
+      position: relative;
+    }
+  }
+
+  /* mini controle (só em tela estreita): abre/fecha o controle completo */
+  .mwtda-lp-remote__toggle {
+    display: none;
+  }
+
+  // controle completo só quando cabe na margem ao lado do conteúdo; fora
+  // disso ele fica recolhido pra não cobrir texto
+  @media (max-width: 1419px), (max-height: 600px) {
+    .mwtda-lp-remote {
+      left: 16px;
+      bottom: 16px;
+    }
+
+    .mwtda-lp-remote .mwtda-lp-remote__toggle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35em;
+      width: 3.4em;
+      padding: 0.6em 0 0.55em;
+      border-radius: 1.6em 1.6em 1.3em 1.3em;
+      background: linear-gradient(170deg, #353945, #0b0c10);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 0 0 1px rgba(0, 0, 0, 0.5),
+        0 16px 30px -12px rgba(11, 12, 16, 0.6);
+      transform: rotate(-6deg);
+      transition: transform 0.3s ease;
+    }
+
+    .mwtda-lp-remote.is-open .mwtda-lp-remote__toggle {
+      transform: rotate(0deg);
+    }
+
+    .mwtda-lp-remote__toggle-led {
+      width: 0.4em;
+      height: 0.4em;
+      border-radius: 50%;
+      background: var(--mw-primary);
+      box-shadow: 0 0 8px var(--mw-primary);
+      animation: mw-remote-idle 2.4s ease-in-out infinite;
+    }
+
+    @keyframes mw-remote-idle {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
+
+    .mwtda-lp-remote__toggle-grip {
+      display: grid;
+      grid-template-columns: repeat(3, 0.45em);
+      gap: 0.2em;
+    }
+
+    .mwtda-lp-remote__toggle-grip i {
+      height: 0.45em;
+      border-radius: 50%;
+      background: #5a5f6c;
+    }
+
+    .mwtda-lp-remote__toggle-label {
+      font-size: 0.55em;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #c7cbd4;
+    }
+
+    // controle completo sobe a partir do mini controle
+    .mwtda-lp-remote__body {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 12px);
+      font-size: 18px;
+      opacity: 0;
+      visibility: hidden;
+      transform: rotate(-4deg) scale(0.6);
+      transform-origin: bottom left;
+      transition:
+        transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s ease,
+        visibility 0s linear 0.35s;
+    }
+
+    .mwtda-lp-remote .mwtda-lp-remote__rocker button {
+      height: 2.3em;
+    }
+
+    .mwtda-lp-remote .mwtda-lp-remote__mini {
+      width: 1.9em;
+      height: 1.9em;
+    }
+
+    // a largura do controle não comporta botões maiores lado a lado: cresce
+    // a altura do idioma e uma área de toque invisível nos redondos
+    .mwtda-lp-remote__lang .mwtda-lp-lang__option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0;
+    }
+
+    .mwtda-lp-remote .mwtda-lp-remote__mini::after {
+      content: '';
+      position: absolute;
+      inset: -8px -2px;
+    }
+
+    .mwtda-lp-remote.is-open .mwtda-lp-remote__body {
+      opacity: 1;
+      visibility: visible;
+      transform: rotate(-2deg) scale(1);
+      transition:
+        transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s ease;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mwtda-lp-remote__body,
+    .mwtda-lp-remote__body:hover {
+      transform: none;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     17. TROCA DE CANAL — efeito na tela inteira ao apertar o controle:
+     chiado de TV + linhas de varredura, uma faixa rolando de cima pra
+     baixo e o letreiro verde do canal (OSD) no canto, como TV antiga.
+     Fica por baixo do controle (z-index 55 < 60) e não bloqueia clique.
+     ----------------------------------------------------------------- */
+  .mwtda-lp-zap {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .mwtda-lp-zap.is-zapping {
+    visibility: visible;
+  }
+
+  // chiado: ruído + linhas de varredura, pulando de posição em degraus pra
+  // "chiar". O ruído é um bitmap gerado em canvas no load (--mw-zap-noise,
+  // ver bloco 6 do JS em home/index): um SVG feTurbulence + mix-blend-mode
+  // aqui travava o celular por segundos na PRIMEIRA troca de canal (o
+  // navegador só rasteriza o filtro quando a camada aparece). A camada só
+  // sobra 10% pra cada lado — o jitter anda no máximo ~8%.
+  .mwtda-lp-zap__static {
+    position: absolute;
+    inset: -10%;
+    opacity: 0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0 1px, transparent 1px 3px),
+      var(--mw-zap-noise, none);
+    background-size: auto, 160px 160px;
+    will-change: transform, opacity;
+  }
+
+  .mwtda-lp-zap.is-zapping .mwtda-lp-zap__static {
+    animation:
+      mw-zap-static 0.75s ease-out forwards,
+      mw-zap-jitter 0.12s steps(4) infinite;
+  }
+
+  @keyframes mw-zap-static {
+    0%   { opacity: 0; }
+    8%   { opacity: 0.95; }
+    35%  { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes mw-zap-jitter {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(-7%, 4%); }
+    50%  { transform: translate(5%, -6%); }
+    75%  { transform: translate(-3%, -2%); }
+    100% { transform: translate(6%, 5%); }
+  }
+
+  // faixa clara rolando (a "barra" de sincronismo de TV)
+  .mwtda-lp-zap__bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -30%;
+    height: 22%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.55) 45%, rgba(252, 113, 7, 0.18) 55%, transparent);
+    opacity: 0;
+  }
+
+  .mwtda-lp-zap.is-zapping .mwtda-lp-zap__bar {
+    animation: mw-zap-bar 0.7s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+
+  @keyframes mw-zap-bar {
+    0%   { top: -30%; opacity: 1; }
+    100% { top: 110%; opacity: 0.4; }
+  }
+
+  // letreiro do canal (on-screen display)
+  .mwtda-lp-zap__osd {
+    position: absolute;
+    top: 28px;
+    right: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 0.7rem 1.1rem;
+    border-radius: 12px;
+    background: rgba(7, 22, 14, 0.82);
+    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
+    color: #7dfca8;
+    font-family: var(--mw-font-heading);
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(125, 252, 168, 0.7);
+    opacity: 0;
+  }
+
+  .mwtda-lp-zap__osd * {
+    font-size: inherit;
+  }
+
+  .mwtda-lp-zap__osd span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    opacity: 0.8;
+  }
+
+  .mwtda-lp-zap__osd strong {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+  }
+
+  .mwtda-lp-zap.is-zapping .mwtda-lp-zap__osd {
+    animation: mw-zap-osd 1.9s steps(1, end) forwards, mw-zap-osd-fade 1.9s ease forwards;
+  }
+
+  // entra "piscando" (liga/desliga em degraus) e depois some suave
+  @keyframes mw-zap-osd {
+    0%   { visibility: hidden; }
+    6%   { visibility: visible; }
+    10%  { visibility: hidden; }
+    14%  { visibility: visible; }
+    100% { visibility: visible; }
+  }
+
+  @keyframes mw-zap-osd-fade {
+    0%, 70% { opacity: 1; }
+    100%    { opacity: 0; }
+  }
+
+  @media (max-width: 560px) {
+    .mwtda-lp-zap__osd {
+      top: 16px;
+      right: 16px;
+      padding: 0.55rem 0.85rem;
+    }
+
+    .mwtda-lp-zap__osd strong {
+      font-size: 1.4rem;
+    }
+  }
+
+  // sem movimento: sem efeito (o visor do controle já mostra o canal)
+  @media (prefers-reduced-motion: reduce) {
+    .mwtda-lp-zap {
+      display: none;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     18. TRILHA SONORA — botão no hero, tecla ♪ do controle remoto e tudo
+     que "pulsa" no ritmo. O JS (bloco 11 de home/index.html.erb) escreve
+     no <html>:
+       • .mwtda-sound-on enquanto a batida toca;
+       • --mw-beat (0 a 1): energia do grave, medida a cada frame;
+       • --mw-beat-dur: duração de um tempo (0.652s a 92 BPM).
+     ----------------------------------------------------------------- */
+  @keyframes mw-eq-dance {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+
+  .mwtda-lp .mwtda-lp-soundpill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+    padding: 0.55rem 1.15rem;
+    border: 1px solid var(--mw-border-strong);
+    border-radius: 999px;
+    background: var(--mw-bg-elevated);
+    color: var(--mw-fg-muted);
+    font: 600 0.85rem var(--mw-font-body);
+    cursor: pointer;
+    appearance: none;
+    transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .mwtda-lp .mwtda-lp-soundpill:hover {
+    color: var(--mw-fg);
+    border-color: var(--mw-primary);
+    box-shadow: 0 6px 18px rgba(252, 113, 7, 0.16);
+    transform: translateY(-1px);
+  }
+
+  html.mwtda-sound-on .mwtda-lp-soundpill {
+    color: var(--mw-fg);
+    border-color: var(--mw-primary);
+  }
+
+  /* mini equalizador dentro do botão: parado, vira o "play"; tocando, dança */
+  .mwtda-lp-soundpill__eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+  }
+
+  .mwtda-lp-soundpill__eq i {
+    width: 3px;
+    border-radius: 2px;
+    transform-origin: bottom;
+  }
+
+  .mwtda-lp-soundpill__eq i:nth-child(1) { height: 55%;  background: #7c3aed; }
+  .mwtda-lp-soundpill__eq i:nth-child(2) { height: 100%; background: #fb7115; }
+  .mwtda-lp-soundpill__eq i:nth-child(3) { height: 70%;  background: #22c55e; }
+  .mwtda-lp-soundpill__eq i:nth-child(4) { height: 40%;  background: #f5b301; }
+
+  html.mwtda-sound-on .mwtda-lp-soundpill__eq i {
+    animation: mw-eq-dance var(--mw-beat-dur, 0.65s) ease-in-out infinite;
+  }
+
+  html.mwtda-sound-on .mwtda-lp-soundpill__eq i:nth-child(2) { animation-delay: -0.16s; }
+  html.mwtda-sound-on .mwtda-lp-soundpill__eq i:nth-child(3) { animation-delay: -0.33s; }
+  html.mwtda-sound-on .mwtda-lp-soundpill__eq i:nth-child(4) { animation-delay: -0.49s; }
+
+  .mwtda-lp-soundpill__label--mute { display: none; }
+  html.mwtda-sound-on .mwtda-lp-soundpill__label--play { display: none; }
+  html.mwtda-sound-on .mwtda-lp-soundpill__label--mute { display: inline; }
+
+  /* entra no hero com o mesmo fade escalonado dos irmãos */
+  .mwtda-lp-hero__inner > .mwtda-lp-hero__sound { animation-delay: 0.6s; }
+
+  /* as barrinhas da marca espalhadas pela página dançam junto */
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i,
+  html.mwtda-sound-on .mwtda-lp-remote__brand .mwtda-lp-plogo__bars i {
+    transform-origin: bottom;
+    animation: mw-eq-dance var(--mw-beat-dur, 0.65s) ease-in-out infinite;
+  }
+
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i:nth-child(2) { animation-delay: -0.11s; }
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i:nth-child(3) { animation-delay: -0.22s; }
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i:nth-child(4) { animation-delay: -0.33s; }
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i:nth-child(5) { animation-delay: -0.44s; }
+  html.mwtda-sound-on .mwtda-lp-plogo__bars i:nth-child(6) { animation-delay: -0.54s; }
+
+  /* o brilho do hero "respira" no grave */
+  html.mwtda-sound-on .mwtda-lp-hero::before {
+    opacity: calc(0.55 + var(--mw-beat, 0) * 0.65);
+  }
+
+  /* tecla ♪ do controle remoto (botão de verdade, mesmo visual dos minis) */
+  .mwtda-lp-remote .mwtda-lp-remote__mini--sound {
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    appearance: none;
+  }
+
+  .mwtda-lp-remote__mini--sound .fa-volume-xmark { display: none; }
+  html.mwtda-sound-on .mwtda-lp-remote__mini--sound .fa-music { display: none; }
+  html.mwtda-sound-on .mwtda-lp-remote__mini--sound .fa-volume-xmark { display: block; }
+  html.mwtda-sound-on .mwtda-lp-remote .mwtda-lp-remote__mini--sound { color: var(--mw-primary-light); }
+
+  .mwtda-lp-remote__mini-led {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #3a3e48;
+  }
+
+  html.mwtda-sound-on .mwtda-lp-remote__mini-led {
+    background: #ff8a33;
+    box-shadow: 0 0 calc(2px + var(--mw-beat, 0) * 9px) rgba(255, 138, 51, calc(0.4 + var(--mw-beat, 0) * 0.6));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html.mwtda-sound-on .mwtda-lp-plogo__bars i,
+    html.mwtda-sound-on .mwtda-lp-soundpill__eq i {
+      animation: none !important;
+    }
+  }
+
+  /* -----------------------------------------------------------------
+     19. SOLUÇÕES — painel interativo (scrollytelling)
+     Desktop: .mwtda-lp-showcase tem altura extra (4 passos) e o __pin
+     fica sticky; rolar troca o painel do "navegador". Mobile: sem altura
+     extra nem sticky — vira tabs por clique (os passos rolam na
+     horizontal). JS: bloco 10 de home/index.html.erb; a cada troca o
+     painel ativo ganha .is-live, o que reinicia as animações internas.
+     ----------------------------------------------------------------- */
+  .mwtda-lp-showcase {
+    position: relative;
+    margin-top: 3rem;
+  }
+
+  .mwtda-lp-showcase__pin {
+    display: grid;
+    gap: 1.5rem;
+    text-align: left;
+  }
+
+  .mwtda-lp-show__steps {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .mwtda-lp .mwtda-lp-show__step {
+    display: flex;
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 0.95rem 1.05rem;
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius);
+    background: var(--mw-bg-elevated);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    appearance: none;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  .mwtda-lp .mwtda-lp-show__step:hover {
+    border-color: var(--mw-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .mwtda-lp .mwtda-lp-show__step[aria-selected="true"] {
+    border-color: rgba(252, 113, 7, 0.45);
+    box-shadow: 0 12px 32px rgba(11, 12, 16, 0.09);
+  }
+
+  .mwtda-lp .mwtda-lp-show__step[aria-selected="false"] { opacity: 0.72; }
+  .mwtda-lp .mwtda-lp-show__step[aria-selected="false"]:hover { opacity: 1; }
+
+  .mwtda-lp-show__step-rail {
+    flex: none;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--mw-border);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .mwtda-lp-show__step-rail i {
+    position: absolute;
+    inset: 0;
+    transform: scaleY(0);
+    transform-origin: top;
+    background: linear-gradient(180deg, var(--mw-primary), var(--mw-primary-light));
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mwtda-lp-show__step[aria-selected="true"] .mwtda-lp-show__step-rail i {
+    transform: scaleY(1);
+  }
+
+  .mwtda-lp-show__step-body {
+    display: grid;
+    gap: 0.4rem;
+    justify-items: start;
+  }
+
+  .mwtda-lp-show__step-body p {
+    margin: 0;
+    color: var(--mw-fg-muted);
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  /* logos de produto menores dentro dos passos */
+  .mwtda-lp-show__step .mwtda-lp-plogo-img { max-height: 1.45rem; width: auto; }
+  .mwtda-lp-show__step .mwtda-lp-plogo { font-size: 0.9rem; }
+
+  .mwtda-lp-show__hint {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 0.3rem;
+    color: var(--mw-fg-muted);
+    font-size: 0.8rem;
+  }
+
+  /* ------------------------- o "navegador" ------------------------- */
+  .mwtda-lp-show__stage { position: relative; }
+
+  .mwtda-lp-show__frame {
+    box-shadow: 0 40px 90px -36px rgba(11, 12, 16, 0.4);
+  }
+
+  .mwtda-lp-show__panels {
+    position: relative;
+    aspect-ratio: 16 / 10.5;
+    background: #fbfbfd;
+  }
+
+  .mwtda-lp-show__panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.1rem 1.25rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px) scale(0.985);
+    transition:
+      opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+      visibility 0s linear 0.45s;
+  }
+
+  .mwtda-lp-show__panel[data-active="true"] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0.05s, 0.05s, 0s;
+  }
+
+  .mwtda-lp-show__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .mwtda-lp-show__head strong {
+    font-family: var(--mw-font-heading);
+    font-size: 1.05rem;
+  }
+
+  .mwtda-lp-show__head small {
+    color: var(--mw-fg-muted);
+    font-size: 0.78rem;
+  }
+
+  .mwtda-lp-show__open {
+    margin-top: auto;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--mw-primary);
+  }
+
+  .mwtda-lp-show__open i { transition: transform 0.2s ease; }
+  .mwtda-lp-show__open:hover i { transform: translateX(3px); }
+
+  @keyframes mw-show-grow { to { transform: scaleX(1); } }
+  @keyframes mw-show-slide { to { opacity: 1; transform: none; } }
+  @keyframes mw-show-pop { to { opacity: 1; transform: none; } }
+  @keyframes mw-show-draw { to { stroke-dashoffset: 0; } }
+  @keyframes mw-show-fade { to { opacity: 1; } }
+
+  /* ------------------------------ CRM ------------------------------ */
+  .mwtda-lp-show__kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.7rem;
+  }
+
+  .mwtda-lp-show__kpi {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius-sm);
+    background: #fff;
+  }
+
+  .mwtda-lp-show__kpi small,
+  .mwtda-lp-show__funnel > small,
+  .mwtda-lp-show__chart > small {
+    color: var(--mw-fg-muted);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .mwtda-lp-show__kpi strong {
+    font-family: var(--mw-font-heading);
+    font-size: 1.12rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .mwtda-lp-show__kpi em {
+    font-style: normal;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .mwtda-lp-show__kpi em.is-up { color: #15803d; }
+
+  .mwtda-lp-show__split {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 0.9rem;
+  }
+
+  .mwtda-lp-show__funnel,
+  .mwtda-lp-show__chart {
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius-sm);
+    background: #fff;
+  }
+
+  .mwtda-lp-show__funnel-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 44px;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .mwtda-lp-show__funnel-row b {
+    text-align: right;
+    font-size: 0.74rem;
+  }
+
+  .mwtda-lp-show__funnel-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: var(--mw-bg-tint);
+    overflow: hidden;
+  }
+
+  /* o funil "encorpa" levemente no grave quando a trilha toca */
+  html.mwtda-sound-on .mwtda-lp-show__funnel-bar {
+    transform: scaleY(calc(1 + var(--mw-beat, 0) * 0.22));
+  }
+
+  .mwtda-lp-show__funnel-bar i {
+    display: block;
+    height: 100%;
+    width: var(--w);
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--mw-primary), var(--mw-primary-light));
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .is-live .mwtda-lp-show__funnel-bar i { animation: mw-show-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .is-live .mwtda-lp-show__funnel-row:nth-child(3) .mwtda-lp-show__funnel-bar i { animation-delay: 0.08s; }
+  .is-live .mwtda-lp-show__funnel-row:nth-child(4) .mwtda-lp-show__funnel-bar i { animation-delay: 0.16s; }
+  .is-live .mwtda-lp-show__funnel-row:nth-child(5) .mwtda-lp-show__funnel-bar i { animation-delay: 0.24s; }
+
+  .mwtda-lp-show__chart svg {
+    width: 100%;
+    height: 100%;
+    min-height: 110px;
+  }
+
+  .mwtda-lp-show__chart-line {
+    stroke-dasharray: 520;
+    stroke-dashoffset: 520;
+  }
+
+  .is-live .mwtda-lp-show__chart-line { animation: mw-show-draw 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards; }
+
+  .mwtda-lp-show__chart-area { opacity: 0; }
+  .is-live .mwtda-lp-show__chart-area { animation: mw-show-fade 0.8s ease 0.9s forwards; }
+
+  /* ----------------------------- TROCAS ----------------------------- */
+  .mwtda-lp-show__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mwtda-lp-show__chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--mw-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--mw-fg-muted);
+    font-size: 0.75rem;
+  }
+
+  .mwtda-lp-show__chip b {
+    color: var(--chip);
+    font-size: 0.85rem;
+  }
+
+  .mwtda-lp-show__rows {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .mwtda-lp-show__row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius-sm);
+    background: #fff;
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  .is-live .mwtda-lp-show__row { animation: mw-show-slide 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .is-live .mwtda-lp-show__row:nth-child(1) { animation-delay: 0.1s; }
+  .is-live .mwtda-lp-show__row:nth-child(2) { animation-delay: 0.22s; }
+  .is-live .mwtda-lp-show__row:nth-child(3) { animation-delay: 0.34s; }
+  .is-live .mwtda-lp-show__row:nth-child(4) { animation-delay: 0.46s; }
+
+  .mwtda-lp-show__row-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--mw-bg-tint);
+    color: var(--mw-navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .mwtda-lp-show__row b {
+    display: block;
+    font-size: 0.82rem;
+  }
+
+  .mwtda-lp-show__row small {
+    color: var(--mw-fg-muted);
+    font-size: 0.72rem;
+  }
+
+  .mwtda-lp-show__badge {
+    font-style: normal;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .mwtda-lp-show__badge--pending  { background: rgba(180, 83, 9, 0.12);   color: #b45309; }
+  .mwtda-lp-show__badge--approved { background: rgba(11, 114, 231, 0.12); color: #0b72e7; }
+  .mwtda-lp-show__badge--done     { background: rgba(21, 128, 61, 0.12);  color: #15803d; }
+
+  /* ----------------------------- SITES ------------------------------ */
+  .mwtda-lp-show__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #15803d;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .mwtda-lp-show__live i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: mw-show-ping 1.6s ease infinite;
+  }
+
+  @keyframes mw-show-ping {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45); }
+    50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  }
+
+  .mwtda-lp-show__site {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 0.9rem;
+  }
+
+  .mwtda-lp-show__site-shot {
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius-sm);
+    overflow: hidden;
+    background: var(--mw-bg-tint);
+  }
+
+  .mwtda-lp-show__site-shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .mwtda-lp-show__meters {
+    display: grid;
+    gap: 0.7rem;
+    align-content: center;
+  }
+
+  .mwtda-lp-show__meter {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .mwtda-lp-show__meter b { font-size: 0.78rem; }
+
+  .mwtda-lp-show__meter-bar {
+    grid-column: 1 / -1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--mw-bg-tint);
+    overflow: hidden;
+  }
+
+  .mwtda-lp-show__meter-bar i {
+    display: block;
+    height: 100%;
+    width: var(--w);
+    border-radius: 4px;
+    background: linear-gradient(90deg, #22c55e, #14e0a4);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .is-live .mwtda-lp-show__meter-bar i { animation: mw-show-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .is-live .mwtda-lp-show__meter:nth-child(2) .mwtda-lp-show__meter-bar i { animation-delay: 0.1s; }
+  .is-live .mwtda-lp-show__meter:nth-child(3) .mwtda-lp-show__meter-bar i { animation-delay: 0.2s; }
+
+  /* ------------------------------ APPS ------------------------------ */
+  .mwtda-lp-show__pushes {
+    flex: 1;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    display: grid;
+    gap: 0.55rem;
+    align-content: center;
+  }
+
+  .mwtda-lp-show__push {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--mw-border);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(11, 12, 16, 0.08);
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+
+  .is-live .mwtda-lp-show__push {
+    animation: mw-show-pop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(0.15s + var(--i) * 0.28s);
+  }
+
+  .mwtda-lp-show__push-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--mw-primary), var(--mw-primary-light));
+    color: #fff;
+  }
+
+  .mwtda-lp-show__push strong {
+    display: block;
+    font-size: 0.8rem;
+  }
+
+  .mwtda-lp-show__push span {
+    color: var(--mw-fg-muted);
+    font-size: 0.74rem;
+  }
+
+  .mwtda-lp-show__push small {
+    align-self: start;
+    color: var(--mw-fg-muted);
+    font-size: 0.68rem;
+  }
+
+  /* --------------------------- responsivo --------------------------- */
+  @media (min-width: 981px) {
+    /* 4 passos de scrollytelling: a seção "anda" 3 viewports além da tela */
+    .mwtda-lp-showcase { height: 400vh; }
+
+    .mwtda-lp-showcase__pin {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      grid-template-columns: 340px 1fr;
+      align-items: center;
+      align-content: center;
+      gap: 2.2rem;
+      padding: 1.5rem 0;
+    }
+
+    .mwtda-lp-show__hint { display: inline-flex; }
+  }
+
+  @media (max-width: 980px) {
+    .mwtda-lp-show__steps {
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(240px, 82%);
+      overflow-x: auto;
+      padding-bottom: 0.6rem;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+    }
+
+    .mwtda-lp .mwtda-lp-show__step { scroll-snap-align: start; }
+
+    .mwtda-lp-show__panels {
+      aspect-ratio: auto;
+      min-height: 460px;
+    }
+
+    .mwtda-lp-show__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+    .mwtda-lp-show__kpi { padding: 0.55rem 0.6rem; }
+    .mwtda-lp-show__kpi strong { font-size: 0.95rem; }
+    .mwtda-lp-show__split { grid-template-columns: 1fr; }
+    .mwtda-lp-show__site { grid-template-columns: 1fr; }
+    .mwtda-lp-show__site-shot { max-height: 180px; }
+  }
+
+  /* -----------------------------------------------------------------
+     20. CABEÇALHO — logo → home, "Soluções" (dropdown com os 4
+     produtos), Contato e Entrar. Sticky DENTRO do scroller .mwtda-lp
+     (a home mantém o letreiro de anúncio acima dele, que rola embora).
+     Dropdown: hover no desktop (hover:hover) + clique/toque via JS
+     (classe .is-open, fim de home/_lp_scripts.html.erb).
+     ----------------------------------------------------------------- */
+  .mwtda-lp-header {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    background: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--mw-border);
+  }
+
+  .mwtda-lp-header__inner {
+    max-width: var(--mw-container);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1.5rem;
+  }
+
+  .mwtda-lp-header__logo img {
+    display: block;
+    height: 32px;
+    width: auto;
+  }
+
+  .mwtda-lp-header__nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .mwtda-lp .mwtda-lp-header__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: 600 0.9rem var(--mw-font-body);
+    color: var(--mw-fg);
+    transition: color 0.2s ease;
+  }
+
+  .mwtda-lp .mwtda-lp-header__link:hover { color: var(--mw-primary); }
+
+  .mwtda-lp-header__toggle i {
+    font-size: 0.6rem;
+    transition: transform 0.2s ease;
+  }
+
+  .mwtda-lp-header__menu.is-open .mwtda-lp-header__toggle i { transform: rotate(180deg); }
+
+  .mwtda-lp-header__menu { position: relative; }
+
+  .mwtda-lp-header__dropdown {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    left: 50%;
+    transform: translate(-50%, 8px);
+    min-width: 330px;
+    padding: 0.55rem;
+    display: grid;
+    gap: 0.15rem;
+    background: #fff;
+    border: 1px solid var(--mw-border);
+    border-radius: var(--mw-radius);
+    box-shadow: 0 26px 60px -18px rgba(11, 12, 16, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+
+  /* hover abre no desktop; .is-open (JS) cobre clique e toque */
+  @media (hover: hover) and (pointer: fine) {
+    .mwtda-lp-header__menu:hover .mwtda-lp-header__dropdown {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      transition-delay: 0s;
+    }
+  }
+
+  .mwtda-lp-header__menu.is-open .mwtda-lp-header__dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition-delay: 0s;
+  }
+
+  .mwtda-lp .mwtda-lp-header__option {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--mw-radius-sm);
+    transition: background 0.15s ease;
+  }
+
+  .mwtda-lp .mwtda-lp-header__option:hover { background: var(--mw-bg-tint); }
+
+  .mwtda-lp-header__option small {
+    color: var(--mw-fg-muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .mwtda-lp-header__option .mwtda-lp-plogo-img { max-height: 1.25rem; width: auto; }
+  .mwtda-lp-header__option .mwtda-lp-plogo { font-size: 0.95rem; }
+
+  .mwtda-lp .mwtda-lp-header__login {
+    padding: 0.5rem 1.05rem;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 640px) {
+    .mwtda-lp-header__inner { padding: 0.55rem 1rem; }
+    .mwtda-lp-header__nav { gap: 1rem; }
+    .mwtda-lp .mwtda-lp-header__link { font-size: 0.82rem; }
+    .mwtda-lp .mwtda-lp-header__login { padding: 0.45rem 0.85rem; font-size: 0.8rem; }
+
+    /* em tela estreita o dropdown ancora na largura da tela, não no item */
+    .mwtda-lp-header__dropdown {
+      position: fixed;
+      top: 56px;
+      left: 0.75rem;
+      right: 0.75rem;
+      transform: translateY(8px);
+      min-width: 0;
+    }
+
+    .mwtda-lp-header__menu.is-open .mwtda-lp-header__dropdown { transform: translateY(0); }
+  }

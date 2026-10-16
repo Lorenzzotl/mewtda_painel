@@ -1,0 +1,630 @@
+<%#
+  JS das landing pages (sem build, inline): guarda as UTMs da visita, cuida
+  do bloco de compra direta (cartCreate na Storefront API -> checkoutUrl) e do
+  formulário de lead.
+%>
+<script>
+(function () {
+  var config = <%= raw({
+    endpoint: @storefront&.configured? ? @storefront.endpoint : nil,
+    token: @storefront&.configured? ? @storefront.token : nil,
+    attributionKey: LandingPage::ATTRIBUTION_KEY,
+    landingPageId: @landing_page.id.to_s,
+    serverNow: (Time.current.to_f * 1000).to_i,
+    endsAt: @landing_page.ends_at && (@landing_page.ends_at.to_f * 1000).to_i,
+    endedText: @landing_page.ends_at && "A campanha acabou em #{l(@landing_page.ends_at.in_time_zone, format: '%d/%m às %H:%M')}. As vendas estão encerradas."
+  }.to_json) %>;
+
+  // ---- Fim da campanha: quem abriu a página antes do prazo não pode comprar
+  // depois dele. O relógio vem do servidor, pra não depender do aparelho.
+  var clockOffset = config.serverNow - Date.now();
+  function campaignEnded() { return !!config.endsAt && Date.now() + clockOffset >= config.endsAt; }
+  function closeSales() {
+    document.querySelectorAll('[data-lp-submit]').forEach(function (button) {
+      button.disabled = true;
+      button.classList.remove('is-loading');
+      button.dataset.soldOut = '1';
+      button.textContent = 'Vendas encerradas';
+    });
+    document.querySelectorAll('[data-lp-message]').forEach(function (message) {
+      message.textContent = config.endedText;
+    });
+    if (cart) cart.closeSales();
+  }
+
+  // ---- UTMs: primeira visita da sessão com UTM vence; sobrevive a navegação.
+  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid'];
+  var utms = {};
+  try { utms = JSON.parse(sessionStorage.getItem('lp_utms') || '{}'); } catch (e) {}
+  var query = new URLSearchParams(window.location.search);
+  UTM_KEYS.forEach(function (key) { if (query.get(key)) utms[key] = query.get(key); });
+  try { sessionStorage.setItem('lp_utms', JSON.stringify(utms)); } catch (e) {}
+
+  // ---- Storefront API (GraphQL) e atributos do carrinho (landing page + UTMs).
+  function storefront(query, variables) {
+    return fetch(config.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': config.token },
+      body: JSON.stringify({ query: query, variables: variables })
+    }).then(function (response) { return response.json(); }).then(function (json) {
+      if (!json || !json.data) throw new Error('storefront');
+      return json.data;
+    });
+  }
+  function cartAttributes() {
+    var attributes = [{ key: config.attributionKey, value: config.landingPageId }];
+    Object.keys(utms).forEach(function (key) { attributes.push({ key: '_' + key, value: String(utms[key]) }); });
+    return attributes;
+  }
+
+  // ---- Checkout direto: cartCreate -> checkoutUrl (páginas sem carrinho).
+  function checkout(lines, submit, say) {
+    if (campaignEnded()) { closeSales(); return; }
+    if (!config.endpoint) { say('Checkout ainda não configurado.'); return; }
+
+    submit.disabled = true;
+    submit.classList.add('is-loading');
+    say('');
+
+    storefront('mutation BuyNow($lines: [CartLineInput!]!, $attributes: [AttributeInput!]) {' +
+               ' cartCreate(input: { lines: $lines, attributes: $attributes }) {' +
+               ' cart { checkoutUrl } userErrors { field message } } }',
+               { lines: lines, attributes: cartAttributes() }).then(function (data) {
+      var payload = data.cartCreate;
+      var url = payload && payload.cart && payload.cart.checkoutUrl;
+      if (url) { window.location.href = url; return; }
+      throw new Error('checkout');
+    }).catch(function () {
+      submit.disabled = false;
+      submit.classList.remove('is-loading');
+      say('Não deu pra abrir o checkout. Tenta de novo.');
+    });
+  }
+
+  var money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  // ---- Carrinho (shared/_cart): carrinho de verdade na Shopify, guardado no
+  // navegador por landing page. Preços e descontos vêm do próprio carrinho.
+  var cart = (function () {
+    var root = document.querySelector('[data-lp-cart]');
+    if (!root) return null;
+
+    var CART_FIELDS = 'id checkoutUrl totalQuantity cost { totalAmount { amount } }' +
+      ' lines(first: 50) { nodes { id quantity cost { subtotalAmount { amount } totalAmount { amount } }' +
+      ' merchandise { ... on ProductVariant { id title image { url } selectedOptions { name value }' +
+      ' product { title featuredImage { url } } } } } }';
+    var STORE_KEY = 'lp_cart_' + config.landingPageId;
+    var panel = root.querySelector('.lp-cart__panel');
+    var linesEl = root.querySelector('[data-lp-cart-lines]');
+    var lineTemplate = document.querySelector('[data-lp-cart-line]');
+    var emptyEl = root.querySelector('[data-lp-cart-empty]');
+    var footEl = root.querySelector('[data-lp-cart-foot]');
+    var checkoutBtn = root.querySelector('[data-lp-cart-checkout]');
+    var messageEl = root.querySelector('[data-lp-cart-message]');
+    var fabs = document.querySelectorAll('[data-lp-cart-open]');
+    var installments = parseInt(root.dataset.installments, 10);
+    var state = null;
+    var busy = false;
+    var lastFocus = null;
+
+    function cartId() { try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; } }
+    function remember(id) { try { id ? localStorage.setItem(STORE_KEY, id) : localStorage.removeItem(STORE_KEY); } catch (e) {} }
+    function say(text) { messageEl.textContent = text || ''; }
+    function amount(node) { return node ? parseFloat(node.amount) : 0; }
+
+    function open() {
+      lastFocus = document.activeElement;
+      root.hidden = false;
+      void root.offsetWidth; // deixa o display aplicar antes da transição
+      root.classList.add('is-open');
+      document.documentElement.classList.add('lp-cart-locked');
+      panel.focus();
+    }
+    function close() {
+      root.classList.remove('is-open');
+      document.documentElement.classList.remove('lp-cart-locked');
+      setTimeout(function () { if (!root.classList.contains('is-open')) root.hidden = true; }, 350);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    function render() {
+      var lines = state ? state.lines.nodes.filter(function (l) { return l.merchandise && l.merchandise.id; }) : [];
+      var count = lines.reduce(function (n, l) { return n + l.quantity; }, 0);
+
+      fabs.forEach(function (fab) {
+        // o botão flutuante só aparece com item no carrinho; o do cabeçalho fica sempre
+        if (fab.dataset.lpCartOpen !== 'always') fab.hidden = count === 0;
+        var badge = fab.querySelector('[data-lp-cart-count]');
+        if (badge && badge.textContent !== String(count || '')) {
+          badge.textContent = count || '';
+          fab.classList.remove('is-bumped'); void fab.offsetWidth; fab.classList.add('is-bumped');
+        }
+      });
+      root.querySelector('[data-lp-cart-heading-count]').textContent = count ? '(' + count + ')' : '';
+
+      linesEl.innerHTML = '';
+      lines.forEach(function (line) {
+        var node = lineTemplate.content.firstElementChild.cloneNode(true);
+        var variant = line.merchandise;
+        var full = amount(line.cost.subtotalAmount);
+        var total = amount(line.cost.totalAmount);
+        var img = node.querySelector('[data-line-img]');
+        var src = (variant.image && variant.image.url) || (variant.product.featuredImage && variant.product.featuredImage.url);
+        if (src) img.src = src + (src.indexOf('?') < 0 ? '?' : '&') + 'width=200'; else img.remove();
+        node.querySelector('[data-line-title]').textContent = variant.product.title;
+        node.querySelector('[data-line-options]').textContent = variant.selectedOptions
+          .filter(function (o) { return o.value !== 'Default Title'; })
+          .map(function (o) { return o.value; }).join(' · ');
+        node.querySelector('[data-line-qty]').textContent = line.quantity;
+        node.querySelector('[data-line-total]').textContent = money.format(total);
+        node.querySelector('[data-line-full]').textContent = total < full - 0.005 ? money.format(full) : '';
+        node.dataset.lineId = line.id;
+        node.dataset.qty = line.quantity;
+        linesEl.appendChild(node);
+      });
+
+      var full = lines.reduce(function (sum, l) { return sum + amount(l.cost.subtotalAmount); }, 0);
+      var total = state ? amount(state.cost.totalAmount) : 0;
+      var discount = full - total;
+      emptyEl.hidden = count > 0;
+      footEl.hidden = count === 0;
+      root.querySelector('[data-lp-cart-subtotal]').textContent = money.format(full);
+      root.querySelector('[data-lp-cart-discount-row]').hidden = discount < 0.005;
+      root.querySelector('[data-lp-cart-discount]').textContent = '−' + money.format(discount);
+      root.querySelector('[data-lp-cart-total]').textContent = money.format(total);
+      root.querySelector('[data-lp-cart-installments]').innerHTML = installments > 1 && total > 0
+        ? 'em até ' + installments + 'x de <strong>' + money.format(total / installments) + '</strong> sem juros' : '';
+      root.classList.toggle('is-busy', busy);
+    }
+
+    // Roda uma mutação de carrinho; a resposta (carrinho atualizado) vira o estado.
+    function mutate(query, variables, field) {
+      busy = true; render(); say('');
+      return storefront(query, variables).then(function (data) {
+        var payload = data[field];
+        var errors = (payload && payload.userErrors) || [];
+        if (errors.length) throw new Error(errors[0].message);
+        if (!payload || !payload.cart) throw new Error('cart');
+        state = payload.cart;
+        remember(state.id);
+      }).finally(function () { busy = false; render(); });
+    }
+
+    function load() {
+      var id = cartId();
+      if (!id || !config.endpoint) { render(); return Promise.resolve(); }
+      return storefront('query Cart($id: ID!) { cart(id: $id) { ' + CART_FIELDS + ' } }', { id: id })
+        .then(function (data) {
+          // carrinho que virou pedido (ou expirou) volta null: começa outro
+          state = data.cart;
+          if (!state) remember(null);
+          render();
+        }).catch(function () { render(); });
+    }
+
+    function create(lines) {
+      return mutate('mutation Create($lines: [CartLineInput!]!, $attributes: [AttributeInput!]) {' +
+                    ' cartCreate(input: { lines: $lines, attributes: $attributes }) {' +
+                    ' cart { ' + CART_FIELDS + ' } userErrors { message } } }',
+                    { lines: lines, attributes: cartAttributes() }, 'cartCreate');
+    }
+
+    function add(lines) {
+      var id = cartId();
+      if (!id) return create(lines);
+      return mutate('mutation Add($id: ID!, $lines: [CartLineInput!]!) { cartLinesAdd(cartId: $id, lines: $lines) {' +
+                    ' cart { ' + CART_FIELDS + ' } userErrors { message } } }', { id: id, lines: lines }, 'cartLinesAdd')
+        .catch(function (error) {
+          // Falhou: se o carrinho guardado sumiu (virou pedido ou expirou), começa
+          // outro; se ele existe, o erro é da loja (ex.: estoque) e vai pra tela.
+          return storefront('query Exists($id: ID!) { cart(id: $id) { id } }', { id: id }).then(function (data) {
+            if (data.cart) throw error;
+            remember(null);
+            return create(lines);
+          });
+        });
+    }
+
+    function setQuantity(lineId, quantity) {
+      var request = quantity > 0
+        ? mutate('mutation Update($id: ID!, $lines: [CartLineUpdateInput!]!) { cartLinesUpdate(cartId: $id, lines: $lines) {' +
+                 ' cart { ' + CART_FIELDS + ' } userErrors { message } } }',
+                 { id: state.id, lines: [{ id: lineId, quantity: quantity }] }, 'cartLinesUpdate')
+        : mutate('mutation Remove($id: ID!, $ids: [ID!]!) { cartLinesRemove(cartId: $id, lineIds: $ids) {' +
+                 ' cart { ' + CART_FIELDS + ' } userErrors { message } } }',
+                 { id: state.id, ids: [lineId] }, 'cartLinesRemove');
+      request.catch(function (error) {
+        say(error.message && error.message !== 'cart' && error.message !== 'storefront'
+          ? error.message : 'Não deu pra atualizar o carrinho. Tenta de novo.');
+      });
+    }
+
+    // Miniatura "voa" até o botão do carrinho visível (só com animação liberada).
+    // Com o carrinho vazio o flutuante ainda está escondido: mostra antes de medir.
+    function fly(fromImg, origin) {
+      fabs.forEach(function (f) { if (f.hidden) f.hidden = false; });
+      var onScreen = function (f) {
+        var r = f.getBoundingClientRect();
+        return r.width && r.bottom > 0 && r.top < window.innerHeight;
+      };
+      // botão do cabeçalho se ele estiver na tela; senão o flutuante
+      var fab = (anchor && onScreen(anchor) && anchor) ||
+                Array.prototype.find.call(fabs, function (f) { return f !== anchor && onScreen(f); });
+      if (!fromImg || !fab || !fromImg.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+      var a = fromImg.getBoundingClientRect();
+      var b = fab.getBoundingClientRect();
+      if (!b.width) return Promise.resolve();
+      // miniatura fora da tela (kit alto): sai do meio do botão que foi clicado
+      if (!a.width || a.top < 0 || a.bottom > window.innerHeight) {
+        var o = origin.getBoundingClientRect();
+        a = { left: o.left + o.width / 2 - 36, top: o.top + o.height / 2 - 45, width: 72, height: 90 };
+      }
+      var ghost = fromImg.cloneNode();
+      ghost.className = 'lp-cart-ghost';
+      ghost.style.cssText = 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + a.width + 'px;height:' + a.height + 'px';
+      document.body.appendChild(ghost);
+      var dx = b.left + b.width / 2 - (a.left + a.width / 2);
+      var dy = b.top + b.height / 2 - (a.top + a.height / 2);
+      // curva: sobe primeiro e entra de lado no carrinho (sem sair da tela)
+      return ghost.animate([
+        { transform: 'translate(0, 0) scale(1) rotate(0)', opacity: 1 },
+        { transform: 'translate(' + (dx * 0.2) + 'px, ' + (dy * 0.6) + 'px) scale(1.15) rotate(-10deg)', opacity: 1, offset: 0.45 },
+        { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(.15) rotate(12deg)', opacity: .7 }
+      ], { duration: 750, easing: 'cubic-bezier(.5, 0, .3, 1)' }).finished
+        .catch(function () {}).then(function () { ghost.remove(); });
+    }
+
+    fabs.forEach(function (fab) { fab.addEventListener('click', open); });
+    root.addEventListener('click', function (event) {
+      if (event.target.closest('[data-lp-cart-close]')) { close(); return; }
+      var lineEl = event.target.closest('.lp-cart__line');
+      if (!lineEl || busy) return;
+      var step = event.target.closest('[data-line-step]');
+      if (step) setQuantity(lineEl.dataset.lineId, parseInt(lineEl.dataset.qty, 10) + parseInt(step.dataset.lineStep, 10));
+      if (event.target.closest('[data-line-remove]')) {
+        lineEl.classList.add('is-leaving');
+        setQuantity(lineEl.dataset.lineId, 0);
+      }
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && root.classList.contains('is-open')) close();
+    });
+    checkoutBtn.addEventListener('click', function () {
+      if (campaignEnded()) { closeSales(); return; }
+      if (!state || !state.checkoutUrl) return;
+      checkoutBtn.disabled = true;
+      checkoutBtn.classList.add('is-loading');
+      window.location.href = state.checkoutUrl;
+    });
+    window.addEventListener('pageshow', function (event) {
+      checkoutBtn.disabled = false;
+      checkoutBtn.classList.remove('is-loading');
+      if (event.persisted) load(); // voltou do checkout: o carrinho pode ter virado pedido
+    });
+
+    // Com o botão do cabeçalho na tela, o flutuante sai de cena (não ficam dois).
+    var anchor = document.querySelector('[data-lp-cart-open="always"]');
+    if (anchor && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        document.documentElement.classList.toggle('lp-cart-anchored', entries[0].isIntersecting);
+      }).observe(anchor);
+    }
+
+    load();
+
+    return {
+      // lines: [{ merchandiseId, quantity }]. Adiciona, faz a miniatura voar e abre o drawer.
+      add: function (lines, submit, saySubmit, fromImg) {
+        if (campaignEnded()) { closeSales(); return; }
+        if (!config.endpoint) { saySubmit('Carrinho ainda não configurado.'); return; }
+        submit.disabled = true;
+        submit.classList.add('is-loading');
+        saySubmit('');
+        var flight = fly(fromImg, submit);
+        add(lines).then(function () {
+          return flight.then(function () {
+            var label = submit.textContent;
+            submit.classList.add('is-added');
+            submit.textContent = 'Adicionado ✓';
+            setTimeout(function () {
+              submit.classList.remove('is-added');
+              if (submit.dataset.soldOut !== '1') submit.textContent = label;
+            }, 1600);
+            open();
+          });
+        }).catch(function (error) {
+          saySubmit(error.message && !/^(cart|storefront)$/.test(error.message) && !/fetch/i.test(error.message)
+            ? error.message : 'Não deu pra adicionar ao carrinho. Tenta de novo.');
+        }).finally(function () {
+          submit.disabled = submit.dataset.soldOut === '1';
+          submit.classList.remove('is-loading');
+        });
+      },
+      closeSales: function () { checkoutBtn.disabled = true; checkoutBtn.textContent = 'Vendas encerradas'; }
+    };
+  })();
+
+  // ---- Compra direta
+  document.querySelectorAll('[data-lp-buy]').forEach(function (box) {
+    var variants = JSON.parse(box.dataset.variants || '[]');
+    var groups = Array.prototype.slice.call(box.querySelectorAll('[data-lp-option]'));
+    var submit = box.querySelector('[data-lp-submit]');
+    var message = box.querySelector('[data-lp-message]');
+    var selection = {};
+
+    // Opção com valor único já vem escolhida.
+    groups.forEach(function (group) {
+      var buttons = group.querySelectorAll('[data-lp-value]');
+      if (buttons.length === 1) selection[group.dataset.lpOption] = buttons[0].dataset.lpValue;
+    });
+
+    function matches(variant, sel) {
+      return Object.keys(sel).every(function (name) { return variant.options[name] === sel[name]; });
+    }
+
+    function currentVariant() {
+      if (Object.keys(selection).length < groups.length) return null;
+      return variants.find(function (v) { return matches(v, selection); }) || null;
+    }
+
+    function render() {
+      groups.forEach(function (group) {
+        var name = group.dataset.lpOption;
+        group.querySelectorAll('[data-lp-value]').forEach(function (button) {
+          var value = button.dataset.lpValue;
+          var trial = Object.assign({}, selection); trial[name] = value;
+          var possible = variants.some(function (v) { return v.available && matches(v, trial); });
+          button.classList.toggle('is-selected', selection[name] === value);
+          button.classList.toggle('is-unavailable', !possible);
+          button.setAttribute('aria-pressed', selection[name] === value ? 'true' : 'false');
+        });
+      });
+    }
+
+    function say(text) { if (message) message.textContent = text || ''; }
+
+    groups.forEach(function (group) {
+      group.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-lp-value]');
+        if (!button) return;
+        selection[group.dataset.lpOption] = button.dataset.lpValue;
+        box.classList.remove('needs-selection');
+        say('');
+        render();
+      });
+    });
+
+    if (submit) submit.addEventListener('click', function () {
+      var missing = groups.filter(function (g) { return !selection[g.dataset.lpOption]; });
+      if (missing.length) {
+        box.classList.add('needs-selection');
+        say('Escolha ' + missing.map(function (g) { return (g.dataset.lpLabel || g.dataset.lpOption).toLowerCase(); }).join(' e ') + '.');
+        return;
+      }
+      var variant = currentVariant();
+      if (!variant || !variant.available) { say('Essa combinação esgotou. Escolha outra.'); return; }
+      checkout([{ merchandiseId: variant.id, quantity: 1 }], submit, say);
+    });
+
+    render();
+  });
+
+
+  // ---- Kit: N peças, cada uma com suas opções; um checkout só.
+  document.querySelectorAll('[data-lp-kit]').forEach(function (kit) {
+    var variants = JSON.parse(kit.dataset.variants || '[]');
+    var max = parseInt(kit.dataset.max, 10) || 4;
+    var fallbackImage = kit.dataset.fallbackImage;
+    var slotsEl = kit.querySelector('[data-lp-slots]');
+    var template = kit.querySelector('[data-lp-slot-template]');
+    var qtyButtons = kit.querySelectorAll('[data-lp-qty]');
+    var summaryEl = kit.querySelector('[data-lp-kit-summary]');
+    var totalEl = kit.querySelector('[data-lp-kit-total]');
+    var fullEl = kit.querySelector('[data-lp-kit-full]');
+    var installmentsEl = kit.querySelector('[data-lp-kit-installments]');
+    var kitPrices = JSON.parse(kit.dataset.kitPrices || '{}');
+    var submit = kit.querySelector('[data-lp-submit]');
+    var message = kit.querySelector('[data-lp-message]');
+    var optionNames = Array.prototype.map.call(template.content.querySelectorAll('[data-lp-option]'),
+      function (el) { return el.dataset.lpOption; });
+    var labelOf = {};
+    template.content.querySelectorAll('[data-lp-option]').forEach(function (el) { labelOf[el.dataset.lpOption] = el.dataset.lpLabel || el.dataset.lpOption; });
+    var valuesOf = {};
+    optionNames.forEach(function (name) {
+      valuesOf[name] = Array.prototype.map.call(
+        template.content.querySelectorAll('[data-lp-option="' + name + '"] [data-lp-value]'),
+        function (b) { return b.dataset.lpValue; });
+    });
+    // A opção de cor (se houver) ganha valor padrão alternado: kit de 2 já vem 1 de cada.
+    var colorOption = optionNames.find(function (n) { return /^(cor|cores|color|colou?r)$/i.test(n); });
+    var qty = 1;
+    var slots = [];
+
+    function say(text) { if (message) message.textContent = text || ''; }
+    function matches(variant, sel) {
+      return Object.keys(sel).every(function (name) { return variant.options[name] === sel[name]; });
+    }
+    function newSlot(index) {
+      var sel = {};
+      optionNames.forEach(function (name) { if (valuesOf[name].length === 1) sel[name] = valuesOf[name][0]; });
+      if (colorOption) sel[colorOption] = valuesOf[colorOption][index % valuesOf[colorOption].length];
+      return sel;
+    }
+    function complete(sel) { return optionNames.every(function (n) { return sel[n]; }); }
+    function variantFor(sel) {
+      return complete(sel) ? (variants.find(function (v) { return matches(v, sel); }) || null) : null;
+    }
+    function imageFor(sel) {
+      var v = variants.find(function (v) { return v.image && matches(v, sel); });
+      return (v && v.image) || fallbackImage;
+    }
+    function cheapest() {
+      return variants.reduce(function (min, v) { return Math.min(min, parseFloat(v.price)); }, Infinity);
+    }
+
+    function render() {
+      qtyButtons.forEach(function (b) {
+        var on = parseInt(b.dataset.lpQty, 10) === qty;
+        b.classList.toggle('is-selected', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+
+      while (slotsEl.children.length < qty) {
+        var node = template.content.firstElementChild.cloneNode(true);
+        node.dataset.index = slotsEl.children.length;
+        slotsEl.appendChild(node);
+      }
+      while (slotsEl.children.length > qty) slotsEl.removeChild(slotsEl.lastElementChild);
+
+      Array.prototype.forEach.call(slotsEl.children, function (node, i) {
+        var sel = slots[i];
+        node.querySelector('[data-lp-slot-title]').textContent = qty === 1 ? 'Sua camiseta' : 'Camiseta ' + (i + 1);
+        var img = node.querySelector('[data-lp-slot-img]');
+        var src = imageFor(sel);
+        if (src && img.getAttribute('src') !== src) img.setAttribute('src', src);
+        node.querySelectorAll('[data-lp-option]').forEach(function (group) {
+          var name = group.dataset.lpOption;
+          group.querySelectorAll('[data-lp-value]').forEach(function (button) {
+            var value = button.dataset.lpValue;
+            var trial = Object.assign({}, sel); trial[name] = value;
+            var possible = variants.some(function (v) { return v.available && matches(v, trial); });
+            button.classList.toggle('is-selected', sel[name] === value);
+            button.classList.toggle('is-unavailable', !possible);
+            button.setAttribute('aria-pressed', sel[name] === value ? 'true' : 'false');
+          });
+        });
+      });
+
+      // Resumo: "2× Branca · 1× Preta" e total.
+      var counts = {};
+      slots.slice(0, qty).forEach(function (sel) {
+        var key = colorOption ? (sel[colorOption] || '?') : 'Camiseta';
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      summaryEl.textContent = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; }).join(' · ');
+      var full = slots.slice(0, qty).reduce(function (sum, sel) {
+        var v = variantFor(sel);
+        return sum + (v ? parseFloat(v.price) : cheapest());
+      }, 0);
+      // Desconto de kit da loja (cotado na Shopify), proporcional ao preço cheio.
+      var quoted = kitPrices[qty];
+      var total = quoted && isFinite(full) ? full * (quoted / (cheapest() * qty)) : full;
+      if (fullEl) fullEl.textContent = total < full - 0.005 ? money.format(full) : '';
+      var formatted = isFinite(total) ? money.format(total) : '';
+      if (totalEl.textContent && totalEl.textContent !== formatted) {
+        totalEl.classList.remove('bump'); void totalEl.offsetWidth; totalEl.classList.add('bump');
+      }
+      totalEl.textContent = formatted;
+      if (installmentsEl) {
+        var n = parseInt(installmentsEl.dataset.lpKitInstallments, 10);
+        installmentsEl.innerHTML = isFinite(total) && n > 1
+          ? 'em até ' + n + 'x de <strong>' + money.format(total / n) + '</strong> sem juros' : '';
+      }
+      if (submit && !submit.classList.contains('is-loading') && submit.dataset.soldOut !== '1') {
+        if (cart) submit.textContent = qty === 1 ? 'Adicionar ao carrinho' : 'Adicionar kit com ' + qty;
+        else submit.textContent = qty === 1 ? 'Comprar agora' : 'Comprar kit com ' + qty;
+      }
+    }
+
+    qtyButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        qty = Math.min(max, parseInt(b.dataset.lpQty, 10));
+        while (slots.length < qty) slots.push(newSlot(slots.length));
+        kit.classList.remove('needs-selection');
+        say('');
+        render();
+      });
+    });
+
+    slotsEl.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-lp-value]');
+      if (!button) return;
+      var node = button.closest('[data-lp-slot]');
+      var group = button.closest('[data-lp-option]');
+      slots[parseInt(node.dataset.index, 10)][group.dataset.lpOption] = button.dataset.lpValue;
+      node.classList.remove('needs-selection');
+      say('');
+      render();
+    });
+
+    if (submit) {
+      if (submit.disabled) submit.dataset.soldOut = '1';
+      submit.addEventListener('click', function () {
+        var chosen = slots.slice(0, qty);
+        var missing = [];
+        Array.prototype.forEach.call(slotsEl.children, function (node, i) {
+          var incomplete = !complete(chosen[i]);
+          node.classList.toggle('needs-selection', incomplete);
+          if (incomplete) missing.push(i);
+        });
+        if (missing.length) {
+          var names = optionNames.filter(function (n) { return chosen.some(function (s) { return !s[n]; }); });
+          say('Escolha ' + names.map(function (n) { return labelOf[n].toLowerCase(); }).join(' e ') +
+              (qty > 1 ? ' de cada camiseta.' : '.'));
+          slotsEl.children[missing[0]].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        var lines = {};
+        for (var i = 0; i < chosen.length; i++) {
+          var v = variantFor(chosen[i]);
+          if (!v || !v.available) { say('A camiseta ' + (i + 1) + ' esgotou nessa combinação. Troca a opção.'); return; }
+          lines[v.id] = (lines[v.id] || 0) + 1;
+        }
+        var cartLines = Object.keys(lines).map(function (id) { return { merchandiseId: id, quantity: lines[id] }; });
+        if (cart) {
+          var thumbs = slotsEl.querySelectorAll('[data-lp-slot-img]');
+          cart.add(cartLines, submit, say, thumbs[thumbs.length - 1]);
+        } else {
+          checkout(cartLines, submit, say);
+        }
+      });
+    }
+
+    slots.push(newSlot(0));
+    render();
+  });
+
+  // Volta do checkout pelo botão "voltar": destrava os botões (bfcache).
+  window.addEventListener('pageshow', function () {
+    if (campaignEnded()) { closeSales(); return; }
+    document.querySelectorAll('[data-lp-submit].is-loading').forEach(function (b) {
+      b.disabled = false; b.classList.remove('is-loading');
+    });
+  });
+
+  // Página aberta na hora do fim: fecha as vendas sem esperar o clique.
+  if (config.endsAt) {
+    var remaining = config.endsAt - (Date.now() + clockOffset);
+    if (remaining <= 0) closeSales();
+    else if (remaining < 2147483647) setTimeout(closeSales, remaining);
+  }
+
+  // ---- Lead
+  document.querySelectorAll('[data-lp-lead]').forEach(function (form) {
+    var message = form.querySelector('[data-lp-lead-message]');
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var data = new FormData(form);
+      if (!String(data.get('name') || '').trim() || !/^\S+@\S+\.\S+$/.test(String(data.get('email') || '').trim())) {
+        message.textContent = 'Preenche nome e um e-mail válido.';
+        return;
+      }
+      Object.keys(utms).forEach(function (key) { data.append(key, utms[key]); });
+      var button = form.querySelector('[type=submit]');
+      button.disabled = true;
+      fetch(form.action, { method: 'POST', body: data, headers: { 'Accept': 'application/json' } })
+        .then(function (response) { return response.json().then(function (json) { return { ok: response.ok, json: json }; }); })
+        .then(function (result) {
+          if (!result.ok) throw new Error((result.json.errors || []).join(' '));
+          form.classList.add('is-done');
+          message.textContent = message.dataset.success;
+          form.reset();
+        })
+        .catch(function (error) {
+          button.disabled = false;
+          message.textContent = error.message || 'Não deu pra cadastrar agora. Tenta de novo.';
+        });
+    });
+  });
+})();
+</script>

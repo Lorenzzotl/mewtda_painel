@@ -1,0 +1,529 @@
+<%# app/views/sales_dashboard/index.html.erb %>
+<% title 'Dashboard de Vendas' %>
+
+<div class="sd-page">
+  <div class="sd-header">
+    <div>
+      <div class="sd-header__title">
+        Dashboard de Vendas
+        <% if @client %>
+          — <i class="fa-brands fa-shopify sd-header__shopify-icon" title="Shopify"></i> <%= @client.name %>
+        <% end %>
+      </div>
+      <div class="sd-header__subtitle">Ticket médio, faturamento, ROAS e CAC do mês</div>
+      <% if @client %>
+        <div class="sd-header__sync-info">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span title="<%= @client.orders_synced_at&.strftime('%d/%m/%Y %H:%M') %>">
+            Pedidos: <%= @client.orders_synced_at ? "#{time_ago_in_words(@client.orders_synced_at)} atrás" : 'nunca sincronizado' %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+
+    <% if @client %>
+      <% current_month = Date.new(@year, @month, 1) %>
+      <div class="sd-month-nav">
+        <%= link_to '‹', sales_dashboard_path(year: (current_month - 1.month).year, month: (current_month - 1.month).month), class: 'sd-month-nav__btn' %>
+        <span class="sd-month-nav__label"><%= month_label(current_month) %></span>
+        <%= link_to '›', sales_dashboard_path(year: (current_month + 1.month).year, month: (current_month + 1.month).month), class: 'sd-month-nav__btn' %>
+      </div>
+      <% if current_user.admin? %>
+        <%= button_to process_now_sales_dashboard_path(year: @year, month: @month), method: :post,
+            class: 'sd-export-btn', title: 'Sincroniza os pedidos deste mês agora',
+            form: { data: { turbo: false } },
+            data: { disable_with: 'Processando... pode levar alguns minutos' } do %>
+          <i class="fa-solid fa-rotate"></i>
+          Processar Agora
+        <% end %>
+      <% end %>
+      <%= link_to export_xlsx_sales_dashboard_path(year: @year, month: @month), class: 'sd-export-btn' do %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        Baixar Planilha
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if @empty_state %>
+    <p><%= @empty_message %></p>
+  <% else %>
+    <% unless @metrics[:ad_cost_available] %>
+      <div class="sd-alert">
+        <span>
+          <% if @metrics[:configured_platforms].empty? %>
+            Nenhum custo de anúncio cadastrado para este cliente.
+          <% else %>
+            Nenhum custo de anúncio cadastrado para este período.
+          <% end %>
+        </span>
+        <%= link_to 'Cadastrar custo', new_ad_cost_path, class: 'crm-btn sd-alert__btn' %>
+      </div>
+    <% end %>
+
+    <div class="sd-kpi-grid">
+      <div class="crm-kpi-card sd-kpi-card--wide">
+        <div class="crm-kpi-card__label">Faturamento</div>
+        <div class="crm-kpi-card__value"><%= currency(@metrics[:revenue]) %></div>
+        <div class="sd-breakdown">
+          <div class="sd-breakdown__row">
+            <span class="sd-breakdown__label">Bruto</span>
+            <span class="sd-breakdown__value"><%= currency(@metrics[:gross_sales]) %></span>
+          </div>
+          <div class="sd-breakdown__row sd-breakdown__row--neg">
+            <span class="sd-breakdown__label">− Descontos</span>
+            <span class="sd-breakdown__value"><%= currency(@metrics[:discounts]) %></span>
+          </div>
+          <div class="sd-breakdown__row sd-breakdown__row--subtotal">
+            <span class="sd-breakdown__label">= Faturamento (líquido)</span>
+            <span class="sd-breakdown__value"><%= currency(@metrics[:net_of_discounts]) %></span>
+          </div>
+          <div class="sd-breakdown__row sd-breakdown__row--pos">
+            <span class="sd-breakdown__label">+ Frete</span>
+            <span class="sd-breakdown__value"><%= currency(@metrics[:shipping]) %></span>
+          </div>
+          <div class="sd-breakdown__row sd-breakdown__row--total">
+            <span class="sd-breakdown__label">= Faturamento</span>
+            <span class="sd-breakdown__value"><%= currency(@metrics[:revenue]) %></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="crm-kpi-card">
+        <div class="crm-kpi-card__label">ROAS Faturado</div>
+        <div class="crm-kpi-card__value"><%= @metrics[:roas] ? "#{@metrics[:roas]}x" : '—' %></div>
+      </div>
+
+      <div class="crm-kpi-card">
+        <div class="crm-kpi-card__label">CAC</div>
+        <div class="crm-kpi-card__value"><%= @metrics[:cac] ? currency(@metrics[:cac]) : '—' %></div>
+        <div class="sd-kpi__hint"><%= @metrics[:new_customers_count] %> clientes novos</div>
+      </div>
+    </div>
+
+    <% any_goal = %i[revenue_target roas_target avg_ticket_target cac_target tagged_revenue_target]
+                  .any? { |k| @metrics[k].present? } %>
+    <div class="sd-chart-card sd-goals-card">
+      <div class="sd-goals-card__header">
+        <div>
+          <div class="sd-chart-card__title">Metas do Mês</div>
+          <div class="sd-chart-card__subtitle">Comparativo do mês contra as metas definidas</div>
+        </div>
+        <%= link_to any_goal ? 'Editar meta' : 'Definir meta', edit_goal_path(year: @year, month: @month), class: 'crm-btn crm-btn--secondary' %>
+      </div>
+
+      <% unless any_goal %>
+        <p class="sd-chart-empty">Nenhuma meta definida para este mês.</p>
+      <% end %>
+
+      <% if any_goal %>
+        <div class="sd-goals-summary">
+          <div class="sd-goals-summary__title">Resumo das Metas</div>
+
+          <% if @metrics[:revenue_target].present? %>
+            <%= render 'sales_dashboard/goal_summary_bar',
+                label: 'Faturamento (Bruto − Descontos + Frete)', format: :currency,
+                current: @metrics[:revenue], target: @metrics[:revenue_target],
+                progress_pct: @metrics[:revenue_target_progress_pct], remaining: @metrics[:revenue_target_remaining] %>
+          <% end %>
+
+          <% if @metrics[:avg_ticket_target].present? %>
+            <%= render 'sales_dashboard/goal_summary_bar',
+                label: 'Ticket Médio', format: :currency,
+                current: @metrics[:avg_ticket] || 0, target: @metrics[:avg_ticket_target],
+                progress_pct: @metrics[:avg_ticket_target_progress_pct], remaining: @metrics[:avg_ticket_target_remaining] %>
+          <% end %>
+
+          <% if @metrics[:roas_target].present? %>
+            <%= render 'sales_dashboard/goal_summary_bar',
+                label: 'ROAS Faturado', format: :multiplier,
+                current: @metrics[:roas] || 0, target: @metrics[:roas_target],
+                progress_pct: @metrics[:roas_target_progress_pct], remaining: @metrics[:roas_target_remaining] %>
+          <% end %>
+
+          <% if @metrics[:cac_target].present? %>
+            <%= render 'sales_dashboard/goal_summary_ceiling_bar',
+                label: 'CAC', current: @metrics[:cac], target: @metrics[:cac_target],
+                status: @metrics[:cac_target_status], diff: @metrics[:cac_target_diff] %>
+          <% end %>
+
+          <% if @metrics[:tagged_revenue_target].present? %>
+            <%= render 'sales_dashboard/goal_summary_bar',
+                label: "Vendas — tag \"#{@metrics[:tagged_revenue_tag]}\"", format: :currency,
+                current: @metrics[:tagged_revenue] || 0, target: @metrics[:tagged_revenue_target],
+                progress_pct: @metrics[:tagged_revenue_target_progress_pct], remaining: @metrics[:tagged_revenue_target_remaining] %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% days_in_month = @goal_daily[:days_in_month] %>
+      <div class="sd-goals-grid">
+      <% if @metrics[:revenue_target].present? %>
+        <%= render 'sales_dashboard/goal_progress', chart_id: 'goal-gauge-revenue', metric: 'revenue',
+            label: 'Faturamento (Bruto − Descontos + Frete)', format: :currency,
+            reference: (@metrics[:revenue_target].to_f / days_in_month).round(2),
+            current: @metrics[:revenue], target: @metrics[:revenue_target],
+            progress_pct: @metrics[:revenue_target_progress_pct], remaining: @metrics[:revenue_target_remaining] %>
+      <% end %>
+
+      <% if @metrics[:avg_ticket_target].present? %>
+        <%= render 'sales_dashboard/goal_progress', chart_id: 'goal-gauge-avg-ticket', metric: 'avgTicket',
+            label: 'Ticket Médio', format: :currency, reference: @metrics[:avg_ticket_target],
+            current: @metrics[:avg_ticket] || 0, target: @metrics[:avg_ticket_target],
+            progress_pct: @metrics[:avg_ticket_target_progress_pct], remaining: @metrics[:avg_ticket_target_remaining] %>
+      <% end %>
+
+      <% if @metrics[:roas_target].present? %>
+        <%= render 'sales_dashboard/goal_progress', chart_id: 'goal-gauge-roas', metric: 'roas',
+            label: 'ROAS Faturado', format: :multiplier, reference: @metrics[:roas_target],
+            current: @metrics[:roas] || 0, target: @metrics[:roas_target],
+            progress_pct: @metrics[:roas_target_progress_pct], remaining: @metrics[:roas_target_remaining] %>
+      <% end %>
+
+      <% if @metrics[:cac_target].present? %>
+        <%= render 'sales_dashboard/goal_ceiling', chart_id: 'goal-gauge-cac', metric: 'cac',
+            label: 'CAC', current: @metrics[:cac], target: @metrics[:cac_target],
+            status: @metrics[:cac_target_status], diff: @metrics[:cac_target_diff] %>
+      <% end %>
+
+      <% if @metrics[:tagged_revenue_target].present? %>
+        <%= render 'sales_dashboard/goal_progress', chart_id: 'goal-gauge-tagged', metric: 'taggedRevenue',
+            label: "Vendas — tag \"#{@metrics[:tagged_revenue_tag]}\"", format: :currency,
+            reference: (@metrics[:tagged_revenue_target].to_f / days_in_month).round(2),
+            current: @metrics[:tagged_revenue] || 0, target: @metrics[:tagged_revenue_target],
+            progress_pct: @metrics[:tagged_revenue_target_progress_pct], remaining: @metrics[:tagged_revenue_target_remaining] %>
+      <% end %>
+      </div>
+    </div>
+
+    <div class="sd-chart-card">
+      <div class="sd-chart-card__title">Detalhe por Dia</div>
+      <div class="sd-chart-card__subtitle">Clique em um dia para ver o resumo</div>
+      <div class="sd-day-buttons">
+        <% @goal_daily[:days].each do |d| %>
+          <button type="button" class="sd-day-btn" data-day="<%= d %>">Dia <%= d %></button>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="sd-charts-grid">
+      <div class="sd-chart-card">
+        <div class="sd-chart-card__title">Vendas por dia</div>
+        <div class="sd-chart-card__subtitle">Faturamento e pedidos ao longo do mês</div>
+        <% if @daily[:has_data] %>
+          <div id="sd-daily-chart" style="height: 260px;"></div>
+        <% else %>
+          <p class="sd-chart-empty">Sem vendas registradas neste período ainda.</p>
+        <% end %>
+      </div>
+
+      <div class="sd-chart-card">
+        <div class="sd-chart-card__title">Investimento por Plataforma</div>
+        <div class="sd-chart-card__subtitle">Google Ads x Meta Ads no período</div>
+        <% if @metrics[:ad_cost_by_platform].present? %>
+          <div id="sd-platform-chart" style="height: 180px;"></div>
+          <div class="sd-platform-legend">
+            <% @metrics[:ad_cost_by_platform].each do |platform, amount| %>
+              <div class="sd-platform-legend__item">
+                <span class="sd-platform-badge sd-platform-badge--<%= platform %>">
+                  <% if platform == 'google_ads' %>
+                    <i class="fa-brands fa-google"></i>
+                  <% else %>
+                    <i class="fa-brands fa-meta"></i>
+                  <% end %>
+                </span>
+                <span class="sd-platform-legend__name"><%= AdCost::PLATFORM_LABELS[platform] || platform %></span>
+                <span class="sd-platform-legend__value"><%= currency(amount) %></span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="sd-chart-empty">Nenhum custo cadastrado neste período.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div id="sd-day-modal-overlay" class="sd-modal-overlay" role="dialog" aria-modal="true">
+      <div class="sd-modal">
+        <div class="sd-modal__head">
+          <div>
+            <h2 class="sd-modal__title">Dia <span id="sd-day-modal-day"></span></h2>
+            <p class="sd-modal__subtitle" id="sd-day-modal-date"></p>
+          </div>
+          <button type="button" id="sd-day-modal-close" class="sd-modal__close">&times;</button>
+        </div>
+        <div class="sd-modal__body">
+          <div class="sd-modal__grid" id="sd-day-modal-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sd-orders-modal-overlay" class="sd-modal-overlay" role="dialog" aria-modal="true">
+      <div class="sd-modal">
+        <div class="sd-modal__head">
+          <div>
+            <h2 class="sd-modal__title">Pedidos do Dia <span id="sd-orders-modal-day"></span></h2>
+            <p class="sd-modal__subtitle" id="sd-orders-modal-date"></p>
+          </div>
+          <button type="button" id="sd-orders-modal-close" class="sd-modal__close">&times;</button>
+        </div>
+        <div class="sd-modal__body">
+          <div class="sd-order-list" id="sd-orders-modal-list"></div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% if @client && !@empty_state %>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var root = document.documentElement;
+  var isDark = root.classList.contains('theme-dark');
+  var style = getComputedStyle(root);
+  var primary = style.getPropertyValue('--primary').trim();
+  var gridColor = style.getPropertyValue('--outline').trim();
+  var tooltipTheme = isDark ? 'dark' : 'light';
+
+  var days = <%= raw @daily[:days].to_json %>;
+  var revenue = <%= raw @daily[:revenue_by_day].to_json %>;
+  var orders = <%= raw @daily[:orders_by_day].to_json %>;
+
+  var dailyChartEl = document.querySelector('#sd-daily-chart');
+  if (dailyChartEl) {
+    new ApexCharts(dailyChartEl, {
+      chart: { toolbar: { show: false }, fontFamily: 'inherit', height: 260, type: 'line' },
+      series: [
+        { name: 'Faturamento', type: 'area', data: revenue },
+        { name: 'Pedidos', type: 'column', data: orders }
+      ],
+      xaxis: { categories: days, labels: { formatter: function (d) { return 'Dia ' + d; } } },
+      colors: [primary, '#a78bfa'],
+      grid: { borderColor: gridColor },
+      stroke: { width: [2, 0], curve: 'smooth' },
+      fill: { type: ['gradient', 'solid'], gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.05 } },
+      plotOptions: { bar: { columnWidth: '40%', borderRadius: 3 } },
+      legend: { show: true, position: 'top' },
+      tooltip: {
+        theme: tooltipTheme,
+        y: {
+          formatter: function (v, opts) {
+            if (opts.seriesIndex === 0) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+            return v + ' pedido(s)';
+          }
+        }
+      }
+    }).render();
+  }
+
+  var goalDaily = {
+    days: <%= raw @goal_daily[:days].to_json %>,
+    revenue: <%= raw @goal_daily[:revenue_by_day].to_json %>,
+    avgTicket: <%= raw @goal_daily[:avg_ticket_by_day].to_json %>,
+    roas: <%= raw @goal_daily[:roas_by_day].to_json %>,
+    cac: <%= raw @goal_daily[:cac_by_day].to_json %>,
+    taggedRevenue: <%= raw @goal_daily[:tagged_revenue_by_day].to_json %>,
+    ordersCount: <%= raw @goal_daily[:orders_count_by_day].to_json %>,
+    totalRevenue: <%= raw @goal_daily[:total_revenue_by_day].to_json %>,
+    sessions: <%= raw @goal_daily[:sessions_by_day].to_json %>,
+    checkoutCompleted: <%= raw @goal_daily[:checkout_completed_count_by_day].to_json %>
+  };
+
+  var goalColors = { normal: primary, done: '#16a34a', over: '#dc2626', empty: gridColor };
+  var goalFormatters = {
+    currency: function (v) { return 'R$ ' + v.toFixed(2).replace('.', ','); },
+    percent: function (v) { return v.toFixed(1) + '%'; },
+    multiplier: function (v) { return v.toFixed(2) + 'x'; }
+  };
+
+  document.querySelectorAll('[data-goal-chart]').forEach(function (row) {
+    var el = document.getElementById(row.dataset.chartId);
+    if (!el) return;
+
+    var series = goalDaily[row.dataset.metric] || [];
+    var reference = parseFloat(row.dataset.reference);
+    var color = goalColors[row.dataset.status] || primary;
+    var formatter = goalFormatters[row.dataset.format] || function (v) { return v; };
+
+    var annotations = isNaN(reference) ? {} : {
+      yaxis: [{
+        y: reference,
+        borderColor: gridColor,
+        strokeDashArray: 4,
+        label: {
+          text: 'Meta: ' + formatter(reference),
+          style: { color: gridColor, background: 'transparent', fontSize: '10px' },
+          position: 'right'
+        }
+      }]
+    };
+
+    new ApexCharts(el, {
+      chart: { toolbar: { show: false }, fontFamily: 'inherit', height: 240, type: 'area' },
+      series: [{ name: row.dataset.label, data: series }],
+      xaxis: {
+        categories: goalDaily.days,
+        labels: { formatter: function (d) { return 'Dia ' + d; } }
+      },
+      yaxis: { labels: { formatter: formatter } },
+      colors: [color],
+      grid: { borderColor: gridColor },
+      stroke: { width: 2, curve: 'smooth' },
+      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.05 } },
+      annotations: annotations,
+      legend: { show: false },
+      tooltip: {
+        theme: tooltipTheme,
+        y: { formatter: function (v) { return v === null ? '—' : formatter(v); } }
+      }
+    }).render();
+  });
+
+  var dayModalYear = <%= @year %>;
+  var dayModalMonth = <%= @month %>;
+  var monthNames = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+  ];
+
+  function fmtCurrency(v) { return 'R$ ' + (v || 0).toFixed(2).replace('.', ','); }
+  function fmtMultiplier(v) { return v === null || v === undefined ? '—' : v.toFixed(2) + 'x'; }
+
+  function dayMetricCard(label, value, opts) {
+    opts = opts || {};
+    var cls = 'sd-modal__metric' + (opts.clickable ? ' sd-modal__metric--clickable' : '');
+    var attr = opts.clickable ? ' data-open-orders="1"' : '';
+    var warningTitle = 'A Shopify não disponibiliza sessões/conversão via API — este número vem do nosso ' +
+      'pixel de rastreamento próprio e pode não bater exatamente com o relatório nativo da Shopify.';
+    var warningIcon = opts.warning
+      ? '<i class="fa-solid fa-triangle-exclamation sd-disclaimer-icon" title="' + warningTitle + '"></i>'
+      : '';
+    return '<div class="' + cls + '"' + attr + '>' +
+      '<span class="sd-modal__metric-label">' + label + warningIcon + '</span>' +
+      '<span class="sd-modal__metric-value">' + value + '</span>' +
+    '</div>';
+  }
+
+  var currentDayModalDay = null;
+
+  function openDayModal(day) {
+    var idx = goalDaily.days.indexOf(day);
+    if (idx === -1) return;
+
+    currentDayModalDay = day;
+    document.getElementById('sd-day-modal-day').textContent = day;
+    document.getElementById('sd-day-modal-date').textContent =
+      day + ' de ' + monthNames[dayModalMonth - 1] + ' de ' + dayModalYear;
+
+    var avgTicket = goalDaily.avgTicket[idx];
+    var roas = goalDaily.roas[idx];
+    var cac = goalDaily.cac[idx];
+
+    var cards = [
+      dayMetricCard('Faturamento', fmtCurrency(goalDaily.totalRevenue[idx])),
+      dayMetricCard('Pedidos', goalDaily.ordersCount[idx], { clickable: true }),
+      dayMetricCard('Ticket Médio', avgTicket === null ? '—' : fmtCurrency(avgTicket)),
+      dayMetricCard('Acessos', goalDaily.sessions[idx], { warning: true }),
+      dayMetricCard('Checkouts Completos', goalDaily.checkoutCompleted[idx], { warning: true })
+    ];
+
+    if (roas !== null && roas !== undefined) cards.push(dayMetricCard('ROAS', fmtMultiplier(roas)));
+    if (cac !== null && cac !== undefined) cards.push(dayMetricCard('CAC', fmtCurrency(cac)));
+
+    document.getElementById('sd-day-modal-grid').innerHTML = cards.join('');
+    document.getElementById('sd-day-modal-overlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDayModal() {
+    document.getElementById('sd-day-modal-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.sd-day-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { openDayModal(parseInt(btn.dataset.day, 10)); });
+  });
+
+  var dayModalOverlay = document.getElementById('sd-day-modal-overlay');
+  if (dayModalOverlay) {
+    document.getElementById('sd-day-modal-close').addEventListener('click', closeDayModal);
+    dayModalOverlay.addEventListener('click', function (e) { if (e.target === this) closeDayModal(); });
+  }
+
+  var ordersForDayUrl = '<%= orders_for_day_sales_dashboard_path %>';
+
+  function orderRow(order) {
+    return '<div class="sd-order-row">' +
+      '<span class="sd-order-row__number">#' + (order.number || order.id) + '</span>' +
+      '<span class="sd-order-row__time">' + (order.time || '—') + '</span>' +
+      '<span class="sd-order-row__customer">' + order.customer + '</span>' +
+      '<span class="sd-order-row__total">' + fmtCurrency(order.total) + '</span>' +
+    '</div>';
+  }
+
+  function openOrdersModal(day) {
+    document.getElementById('sd-orders-modal-day').textContent = day;
+    document.getElementById('sd-orders-modal-date').textContent =
+      day + ' de ' + monthNames[dayModalMonth - 1] + ' de ' + dayModalYear;
+    document.getElementById('sd-orders-modal-list').innerHTML =
+      '<p class="sd-chart-empty">Carregando...</p>';
+    document.getElementById('sd-orders-modal-overlay').style.display = 'block';
+
+    var url = ordersForDayUrl + '?year=' + dayModalYear + '&month=' + dayModalMonth + '&day=' + day;
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        var list = document.getElementById('sd-orders-modal-list');
+        if (!data.orders || data.orders.length === 0) {
+          list.innerHTML = '<p class="sd-chart-empty">Nenhum pedido neste dia.</p>';
+          return;
+        }
+        list.innerHTML = data.orders.map(orderRow).join('');
+      })
+      .catch(function () {
+        document.getElementById('sd-orders-modal-list').innerHTML =
+          '<p class="sd-chart-empty">Erro ao carregar os pedidos. Tente novamente.</p>';
+      });
+  }
+
+  function closeOrdersModal() {
+    document.getElementById('sd-orders-modal-overlay').style.display = 'none';
+  }
+
+  var dayModalGrid = document.getElementById('sd-day-modal-grid');
+  if (dayModalGrid) {
+    dayModalGrid.addEventListener('click', function (e) {
+      var card = e.target.closest('[data-open-orders]');
+      if (card && currentDayModalDay !== null) openOrdersModal(currentDayModalDay);
+    });
+  }
+
+  var ordersModalOverlay = document.getElementById('sd-orders-modal-overlay');
+  if (ordersModalOverlay) {
+    document.getElementById('sd-orders-modal-close').addEventListener('click', closeOrdersModal);
+    ordersModalOverlay.addEventListener('click', function (e) { if (e.target === this) closeOrdersModal(); });
+  }
+
+  var platformChartEl = document.querySelector('#sd-platform-chart');
+  if (platformChartEl) {
+    var platformLabels = <%= raw @metrics[:ad_cost_by_platform].keys.map { |p| AdCost::PLATFORM_LABELS[p] || p }.to_json %>;
+    var platformValues = <%= raw @metrics[:ad_cost_by_platform].values.map(&:to_f).to_json %>;
+    var platformColors = <%= raw @metrics[:ad_cost_by_platform].keys.map { |p| p == 'google_ads' ? '#4285F4' : '#0866FF' }.to_json %>;
+
+    new ApexCharts(platformChartEl, {
+      chart: { toolbar: { show: false }, fontFamily: 'inherit', height: 180, type: 'donut' },
+      series: platformValues,
+      labels: platformLabels,
+      colors: platformColors,
+      legend: { show: false },
+      dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + '%'; } },
+      tooltip: {
+        theme: tooltipTheme,
+        y: { formatter: function (v) { return 'R$ ' + v.toFixed(2).replace('.', ','); } }
+      }
+    }).render();
+  }
+});
+</script>
+<% end %>

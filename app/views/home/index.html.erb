@@ -1,0 +1,419 @@
+<% title "Mewtda — #{t('home.hero.badge')}" %>
+
+<%#
+  =====================================================================
+  MEWTDA — Landing Page
+  ---------------------------------------------------------------------
+  1) CSS     → app/assets/stylesheets/pages/landing.scss (required por
+     admin.scss, entra no precompile normal do Sprockets).
+  2) markup  → classes mwtda-lp-*, com atributos data-reveal /
+     data-reveal-self nos pontos onde entra efeito de rolagem.
+  3) <script> → JS puro (sem dependência nenhuma) com os efeitos de
+     scroll: controle remoto (menu fixo), parallax sutil no hero, reveal
+     em cascata nos cards (fade + slide + blur) via IntersectionObserver,
+     e uma barra de progresso que "acende" os 3 passos de "Como
+     funciona" conforme você rola. Pode virar
+     app/javascript/landing/scroll_effects.js e ser importado no seu
+     application.js / importmap.
+  =====================================================================
+%>
+
+<% content_for :head do %>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<% end %>
+
+<%# controle remoto + efeito de canal ficam fora do container que rola
+    (.mwtda-lp): position:fixed dentro de um elemento com overflow:auto
+    erra o toque no iOS enquanto a página ainda está rolando %>
+<%= render 'home/remote' %>
+
+<div class="mwtda-lp">
+
+  <%= render 'home/announce' %>
+  <%= render 'home/header' %>
+
+  <section class="mwtda-lp-hero" id="inicio" data-hero3d>
+    <%# chips de vantagem flutuando em profundidades diferentes: seguem o
+        mouse com parallax 3D (JS bloco 7) %>
+    <div class="mwtda-lp-hero__chips" aria-hidden="true">
+      <% { funil: ['fa-solid fa-filter', '#0b72e7'], troca: ['fa-solid fa-ticket', '#04432f'], whatsapp: ['fa-brands fa-whatsapp', '#22c55e'], partner: ['fa-brands fa-shopify', '#5e8e3e'] }.each_with_index do |(key, (icon, color)), i| %>
+        <span class="mwtda-lp-hero__chip mwtda-lp-hero__chip--<%= i %>" style="--chip: <%= color %>">
+          <i class="<%= icon %>"></i> <%= t("home.hero_chips.#{key}") %>
+        </span>
+      <% end %>
+    </div>
+    <div class="mwtda-lp-hero__inner">
+      <div class="mwtda-lp-hero__logo3d" data-mwtda-wave-logo aria-hidden="true">
+        <canvas class="mwtda-lp-hero__logo3d-canvas"></canvas>
+      </div>
+      <h1 class="mwtda-lp-hero__headline"><%= t('home.hero.headline') %></h1>
+      <p class="mwtda-lp-hero__subheadline">
+        <%= t('home.hero.subheadline') %>
+      </p>
+      <div class="mwtda-lp-hero__ctas">
+        <a
+          href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.hero.whatsapp_message')) %>"
+          target="_blank"
+          class="mwtda-lp-btn mwtda-lp-btn--primary mwtda-lp-btn--lg"
+        >
+          <i class="fa-brands fa-whatsapp"></i> <%= t('home.hero.cta_contato') %>
+        </a>
+        <a href="#produtos" class="mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg"><%= t('home.hero.cta_ver_solucoes') %></a>
+      </div>
+      <%# trilha sonora: o logo é um equalizador — este botão dá o play numa
+          batida gerada no navegador (Web Audio, bloco 11 do JS) e as barras
+          do logo passam a seguir a música de verdade. Mute aqui ou no
+          controle remoto. %>
+      <button type="button" class="mwtda-lp-soundpill mwtda-lp-hero__sound" data-sound-toggle aria-pressed="false"
+              data-osd-on="<%= t('home.sound.osd_on') %>" data-osd-off="<%= t('home.sound.osd_off') %>">
+        <span class="mwtda-lp-soundpill__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="mwtda-lp-soundpill__label mwtda-lp-soundpill__label--play"><%= t('home.sound.play') %></span>
+        <span class="mwtda-lp-soundpill__label mwtda-lp-soundpill__label--mute"><%= t('home.sound.mute') %></span>
+      </button>
+    </div>
+  </section>
+
+  <%# Visão geral: os 4 produtos, cada um com o seu logo %>
+  <section class="mwtda-lp-products" id="produtos">
+    <div class="mwtda-lp-products__inner">
+      <span class="mwtda-lp-eyebrow" data-reveal-self><%= t('home.products.eyebrow') %></span>
+      <h2 class="mwtda-lp-section__title" data-reveal-self><%= t('home.products.title') %></h2>
+      <p class="mwtda-lp-section__lead" data-reveal-self><%= t('home.products.lead') %></p>
+
+      <%= render 'home/showcase' %>
+    </div>
+  </section>
+
+  <% client_logos = client_logo_assets %>
+  <% if client_logos.any? %>
+    <%# Clientes: duas faixas de logos correndo em sentidos opostos, dentro de
+        um cartão — logos viram silhueta escura uniforme (vêm em variantes
+        claras/escuras diferentes) e ganham cor ao passar o mouse. %>
+    <section class="mwtda-lp-clients" id="clientes">
+      <div class="mwtda-lp-clients__inner">
+        <span class="mwtda-lp-eyebrow" data-reveal-self><%= t('home.clients.title') %></span>
+        <h2 class="mwtda-lp-section__title mwtda-lp-clients__headline" data-reveal-self><%= t('home.clients.headline') %></h2>
+        <p class="mwtda-lp-section__lead mwtda-lp-clients__lead" data-reveal-self><%= t('home.clients.lead') %></p>
+
+        <div class="mwtda-lp-clients__board" data-reveal-self>
+          <% [client_logos, client_logos.reverse].each_with_index do |row, r| %>
+            <div class="mwtda-lp-clients__strip">
+              <div class="mwtda-lp-clients__track<%= ' mwtda-lp-clients__track--reverse' if r.odd? %>">
+                <%# duplicado pra loop do marquee ficar contínuo (o CSS anima -50%) %>
+                <% (row + row).each_with_index do |logo, i| %>
+                  <%# só a 1ª cópia da 1ª faixa entra no leitor de tela / no Tab %>
+                  <% decorative = i >= row.size || r.odd? %>
+                  <% img = image_tag logo, class: 'mwtda-lp-clients__logo', alt: (decorative ? '' : t('home.clients.logo_alt')), 'aria-hidden': decorative ? 'true' : nil, loading: 'lazy' %>
+                  <% if (site = client_site(logo)) %>
+                    <a class="mwtda-lp-clients__tile" href="<%= site %>" target="_blank" rel="noopener" <%= 'tabindex="-1" aria-hidden="true"'.html_safe if decorative %>><%= img %></a>
+                  <% else %>
+                    <div class="mwtda-lp-clients__tile"><%= img %></div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <%= render 'home/advantages' %>
+
+  <%# ============================ 01 — CRM ============================ %>
+  <section class="mwtda-lp-part" id="crm">
+    <div class="mwtda-lp-part__inner">
+      <div class="mwtda-lp-part__copy">
+        <div class="mwtda-lp-part__label" data-reveal-self>
+          <span class="mwtda-lp-part__number"><%= t('home.crm_part.number') %></span>
+          <%= render 'home/product_logo', product: landing_product('crm') %>
+        </div>
+        <h2 class="mwtda-lp-part__title" data-reveal-self><%= t('home.crm_part.title') %></h2>
+        <p class="mwtda-lp-part__lead" data-reveal-self><%= t('home.crm_part.lead') %></p>
+
+        <ul class="mwtda-lp-part__features" data-reveal>
+          <% { analytics: 'fa-solid fa-filter', clientes: 'fa-solid fa-users', trocas: 'fa-solid fa-arrow-right-arrow-left', whatsapp: 'fa-brands fa-whatsapp' }.each do |key, icon| %>
+            <li>
+              <span class="mwtda-lp-part__feature-icon"><i class="<%= icon %>"></i></span>
+              <strong><%= t("home.crm_part.features.#{key}.title") %></strong>
+              <p><%= t("home.crm_part.features.#{key}.text") %></p>
+            </li>
+          <% end %>
+        </ul>
+
+        <div class="mwtda-lp-part__actions" data-reveal-self>
+          <a href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.crm_part.whatsapp_message')) %>" target="_blank" class="mwtda-lp-btn mwtda-lp-btn--dark mwtda-lp-btn--lg">
+            <i class="fa-brands fa-whatsapp"></i> <%= t('home.crm_part.cta_button') %>
+          </a>
+          <% if (page = product_page_path('crm')) %>
+            <%= link_to page, class: 'mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg', data: { turbo: false } do %>
+              <%= t('home.products.page_link') %> <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mwtda-lp-part__visual mwtda-lp-part__visual--wide" data-reveal-self>
+        <div class="mwtda-lp-part__glow"></div>
+        <%# Notebook em CSS com o print do painel. Pra trocar o print, é só
+            substituir app/assets/images/landing/crm-analytics.png — se o
+            arquivo não existir, cai numa versão em HTML do mesmo painel. %>
+        <div class="mwtda-lp-laptop">
+          <div class="mwtda-lp-laptop__screen">
+            <span class="mwtda-lp-laptop__camera"></span>
+            <div class="mwtda-lp-laptop__display">
+              <% if landing_image?('landing/crm-analytics.png') %>
+                <%= image_tag 'landing/crm-analytics.png', alt: t('home.crm_part.screen_alt'), loading: 'lazy' %>
+              <% else %>
+                <%= render 'home/crm_screen' %>
+              <% end %>
+            </div>
+          </div>
+          <div class="mwtda-lp-laptop__base"><span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <%# ======================== 02 — QUERO TROCAR======================= %>
+  <section class="mwtda-lp-part mwtda-lp-part--tint mwtda-lp-part--flip" id="trocas">
+    <div class="mwtda-lp-part__inner">
+      <div class="mwtda-lp-part__copy">
+        <div class="mwtda-lp-part__label" data-reveal-self>
+          <span class="mwtda-lp-part__number"><%= t('home.trocas_part.number') %></span>
+          <%= render 'home/product_logo', product: landing_product('trocas') %>
+        </div>
+        <h2 class="mwtda-lp-part__title" data-reveal-self><%= t('home.trocas_part.title') %></h2>
+        <p class="mwtda-lp-part__lead" data-reveal-self><%= t('home.trocas_part.lead') %></p>
+
+        <ul class="mwtda-lp-part__features" data-reveal>
+          <% { portal: 'fa-solid fa-magnifying-glass', regras: 'fa-regular fa-calendar-check', foto: 'fa-solid fa-camera', cupom: 'fa-solid fa-ticket' }.each do |key, icon| %>
+            <li>
+              <span class="mwtda-lp-part__feature-icon"><i class="<%= icon %>"></i></span>
+              <strong><%= t("home.trocas_part.features.#{key}.title") %></strong>
+              <p><%= t("home.trocas_part.features.#{key}.text") %></p>
+            </li>
+          <% end %>
+        </ul>
+
+        <div class="mwtda-lp-part__actions" data-reveal-self>
+          <a href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.trocas_part.whatsapp_message')) %>" target="_blank" class="mwtda-lp-btn mwtda-lp-btn--dark mwtda-lp-btn--lg">
+            <i class="fa-brands fa-whatsapp"></i> <%= t('home.trocas_part.cta_button') %>
+          </a>
+          <% if (page = product_page_path('trocas')) %>
+            <%= link_to page, class: 'mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg', data: { turbo: false } do %>
+              <%= t('home.products.page_link') %> <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mwtda-lp-part__visual" data-reveal-self>
+        <div class="mwtda-lp-part__glow"></div>
+        <%# Celular com o painel do Quero Trocar (tela "Solicitações" que o
+            lojista usa no dia a dia). Usa o print real em
+            app/assets/images/landing/quero-trocar-mobile.png; sem o arquivo,
+            cai numa versão em HTML da mesma tela. %>
+        <%= render 'home/exchange_phone' %>
+
+        <div class="mwtda-lp-shop__notifications" aria-hidden="true">
+          <% [%w[new fa-solid fa-arrow-right-arrow-left], %w[approved fa-solid fa-ticket]].each_with_index do |(key, *icon), i| %>
+            <div class="mwtda-lp-shop__notification mwtda-lp-exchange__notification--<%= key %>" style="--i: <%= i %>">
+              <span class="mwtda-lp-shop__notification-icon"><i class="<%= icon.join(' ') %>"></i></span>
+              <div>
+                <strong><%= t("home.trocas_part.notifications.#{key}_title") %></strong>
+                <span><%= t("home.trocas_part.notifications.#{key}_text") %></span>
+              </div>
+              <small><%= t('home.apps.notifications.now') %></small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <%# ============================ 03 — NEW (SITES) ============================ %>
+  <section class="mwtda-lp-part" id="sites" data-cases>
+    <div class="mwtda-lp-part__inner">
+      <div class="mwtda-lp-part__copy">
+        <div class="mwtda-lp-part__label" data-reveal-self>
+          <span class="mwtda-lp-part__number"><%= t('home.sites.number') %></span>
+          <%= render 'home/product_logo', product: landing_product('new') %>
+        </div>
+        <h2 class="mwtda-lp-part__title" data-reveal-self><%= t('home.sites.title') %></h2>
+        <p class="mwtda-lp-part__lead" data-reveal-self><%= t('home.sites.lead') %></p>
+
+        <ul class="mwtda-lp-part__list" data-reveal>
+          <% { design: 'fa-solid fa-palette', loja: 'fa-brands fa-shopify', crm: 'fa-solid fa-plug' }.each do |key, icon| %>
+            <li>
+              <span class="mwtda-lp-part__feature-icon"><i class="<%= icon %>"></i></span>
+              <div>
+                <strong><%= t("home.sites.#{key}.title") %></strong>
+                <p><%= t("home.sites.#{key}.text") %></p>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+
+        <div class="mwtda-lp-cases__picker" data-reveal-self>
+          <span class="mwtda-lp-shop__segments-label"><%= t('home.sites.cases_label') %></span>
+          <div class="mwtda-lp-shop__tabs" role="tablist">
+            <% site_cases.each_with_index do |c, i| %>
+              <button type="button" class="mwtda-lp-shop__tab" role="tab" aria-selected="<%= i.zero? %>" data-case-tab="<%= c[:key] %>"><%= c[:name] %></button>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="mwtda-lp-part__actions" data-reveal-self>
+          <a href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.sites.whatsapp_message')) %>" target="_blank" class="mwtda-lp-btn mwtda-lp-btn--dark mwtda-lp-btn--lg">
+            <i class="fa-brands fa-whatsapp"></i> <%= t('home.sites.cta_button') %>
+          </a>
+          <%# página completa do produto (data-turbo false: a página nova
+              re-registra os scripts da landing no DOMContentLoaded) %>
+          <% if (page = product_page_path('new')) %>
+            <%= link_to page, class: 'mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg', data: { turbo: false } do %>
+              <%= t('home.products.page_link') %> <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mwtda-lp-part__visual" data-reveal-self>
+        <div class="mwtda-lp-part__glow"></div>
+        <%# navegador + celular com os prints de cada case; as abas ao lado
+            trocam o case (JS bloco 9). Prints em app/assets/images/landing. %>
+        <div class="mwtda-lp-devices" data-cases-stage>
+          <div class="mwtda-lp-browser">
+            <div class="mwtda-lp-browser__bar">
+              <span></span><span></span><span></span>
+              <em class="mwtda-lp-cases__stack">
+                <% site_cases.each_with_index do |c, i| %>
+                  <span data-case-panel="<%= c[:key] %>" data-active="<%= i.zero? %>"><i class="fa-solid fa-lock"></i> <%= c[:host] %></span>
+                <% end %>
+              </em>
+            </div>
+            <div class="mwtda-lp-cases__stack">
+              <% site_cases.each_with_index do |c, i| %>
+                <%= image_tag c[:desktop], alt: t('home.sites.desktop_alt', store: c[:name]), class: 'mwtda-lp-browser__shot', loading: 'lazy', data: { case_panel: c[:key], active: i.zero? } %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="mwtda-lp-devices__phone">
+            <div class="mwtda-lp-shop__phone mwtda-lp-shop__phone--static">
+              <div class="mwtda-lp-shop__notch"></div>
+              <div class="mwtda-lp-shop__screen mwtda-lp-cases__stack">
+                <% site_cases.each_with_index do |c, i| %>
+                  <%= image_tag c[:mobile], alt: t('home.sites.mobile_alt', store: c[:name]), class: 'mwtda-lp-devices__phone-shot', loading: 'lazy', data: { case_panel: c[:key], active: i.zero? } %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <% site_cases.each_with_index do |c, i| %>
+            <a class="mwtda-lp-devices__case" href="<%= c[:url] %>" target="_blank" rel="noopener" data-case-panel="<%= c[:key] %>" data-active="<%= i.zero? %>">
+              <span><%= t('home.sites.case_label') %></span>
+              <strong><%= c[:name] %></strong>
+              <em><%= t('home.sites.case_link') %> <i class="fa-solid fa-arrow-up-right-from-square"></i></em>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <%
+    # ============================ 04 — APPS ============================
+    # Os dados da vitrine fake (segmentos + fotos Unsplash) agora moram no
+    # HomeHelper (landing_app_segments) — compartilhados com a página /app.
+    app_segments = landing_app_segments
+  %>
+  <section class="mwtda-lp-part mwtda-lp-part--tint mwtda-lp-part--flip mwtda-lp-shop" id="apps" data-shop-showcase>
+    <div class="mwtda-lp-part__inner">
+      <div class="mwtda-lp-part__copy">
+        <div class="mwtda-lp-part__label" data-reveal-self>
+          <span class="mwtda-lp-part__number"><%= t('home.apps.number') %></span>
+          <%= render 'home/product_logo', product: landing_product('app') %>
+          <span class="mwtda-lp-badge"><%= t('home.apps.badge') %></span>
+        </div>
+        <h2 class="mwtda-lp-part__title" data-reveal-self><%= t('home.apps.title') %></h2>
+        <p class="mwtda-lp-part__lead" data-reveal-self><%= t('home.apps.lead') %></p>
+
+        <div class="mwtda-lp-shop__segments" data-reveal-self>
+          <span class="mwtda-lp-shop__segments-label"><%= t('home.apps.segments_label') %></span>
+          <div class="mwtda-lp-shop__tabs" role="tablist">
+            <% app_segments.each_key.with_index do |key, i| %>
+              <button type="button" class="mwtda-lp-shop__tab" role="tab" aria-selected="<%= i.zero? %>" data-shop-tab="<%= key %>"><%= t("home.apps.segments.#{key}.label") %></button>
+            <% end %>
+          </div>
+          <div class="mwtda-lp-shop__pitches">
+            <% app_segments.each_key.with_index do |key, i| %>
+              <p class="mwtda-lp-shop__pitch" data-shop-panel="<%= key %>" data-active="<%= i.zero? %>"><%= t("home.apps.segments.#{key}.pitch") %></p>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="mwtda-lp-part__actions" data-reveal-self>
+          <a href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.apps.whatsapp_message')) %>" target="_blank" class="mwtda-lp-btn mwtda-lp-btn--dark mwtda-lp-btn--lg">
+            <i class="fa-regular fa-bell"></i> <%= t('home.apps.cta_button') %>
+          </a>
+          <% if (page = product_page_path('app')) %>
+            <%= link_to page, class: 'mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg', data: { turbo: false } do %>
+              <%= t('home.products.page_link') %> <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          <% end %>
+          <ul class="mwtda-lp-shop__pills">
+            <% t('home.apps.pills').each do |pill| %>
+              <li><i class="fa-solid fa-check"></i> <%= pill %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mwtda-lp-part__visual" data-reveal-self>
+        <div class="mwtda-lp-part__glow"></div>
+
+        <%= render 'home/app_phone', segments: app_segments %>
+
+        <div class="mwtda-lp-shop__notifications" aria-hidden="true">
+          <% [%w[sale fa-solid fa-sack-dollar], %w[pix fa-solid fa-bolt], %w[cart fa-solid fa-cart-shopping]].each_with_index do |(key, *icon), i| %>
+            <div class="mwtda-lp-shop__notification mwtda-lp-shop__notification--<%= key %>" style="--i: <%= i %>">
+              <span class="mwtda-lp-shop__notification-icon"><i class="<%= icon.join(' ') %>"></i></span>
+              <div>
+                <strong><%= t("home.apps.notifications.#{key}_title") %></strong>
+                <span><%= t("home.apps.notifications.#{key}_text") %></span>
+              </div>
+              <small><%= t('home.apps.notifications.now') %></small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <%= render 'home/compare' %>
+  <%= render 'home/process' %>
+  <%= render 'home/faq' %>
+
+  <section class="mwtda-lp-section mwtda-lp-cta" id="contato">
+    <div class="mwtda-lp-section__inner mwtda-lp-cta__inner" data-reveal-self>
+      <h2><%= t('home.cta.title') %></h2>
+      <p><%= t('home.cta.text') %></p>
+      <div class="mwtda-lp-hero__ctas">
+        <a
+          href="https://wa.me/5516991997608?text=<%= CGI.escape(t('home.cta.whatsapp_message')) %>"
+          target="_blank"
+          class="mwtda-lp-btn mwtda-lp-btn--primary mwtda-lp-btn--lg"
+        >
+          <i class="fa-brands fa-whatsapp"></i> <%= t('home.cta.whatsapp_button') %>
+        </a>
+        <%= link_to t('home.cta.entrar'), new_user_session_path, class: 'mwtda-lp-btn mwtda-lp-btn--outline mwtda-lp-btn--lg' %>
+      </div>
+    </div>
+  </section>
+
+  <%= render 'home/footer' %>
+
+</div>
+
+<%= render 'home/lp_scripts' %>

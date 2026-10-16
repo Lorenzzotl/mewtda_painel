@@ -1,0 +1,140 @@
+<div class="lp">
+
+  <aside class="lp__panel" aria-hidden="true">
+
+    <svg class="lp__dots" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        <pattern id="dot-grid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="#3b4adf" fill-opacity="0.12"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dot-grid)"/>
+    </svg>
+
+    <div class="lp__line lp__line--left"></div>
+    <div class="lp__line lp__line--right"></div>
+
+    <div class="lp__panel-inner">
+
+      <%= image_tag 'admin/logo-novo.png', class: 'lp__brand-logo', alt: 'Logo' %>
+
+      <p class="lp__tagline">Gerencie seu negócio<br>com inteligência</p>
+
+      <div class="lp__pill">
+        <span class="lp__pill-dot"></span>
+        <span class="lp__pill-prefix">Para sua loja:</span>
+        <span class="lp__pill-text" id="tw-text"></span><span class="lp__cursor"></span>
+      </div>
+
+
+
+    </div>
+  </aside>
+
+  <main class="lp__form-side">
+
+    <div class="lp__corner lp__corner--tl"></div>
+    <div class="lp__corner lp__corner--br"></div>
+
+    <div class="lp__card">
+
+      <%= image_tag 'admin/logo-novo.png', class: 'lp__card-logo-mobile', alt: 'Logo' %>
+
+      <header class="lp__card-header">
+        <div class="lp__card-badge">Acesso seguro</div>
+        <h1 class="lp__card-title">Bem-vindo de volta</h1>
+        <p class="lp__card-subtitle">Entre na sua conta para continuar gerenciando seu negócio</p>
+      </header>
+
+      <div class="lp__messages">
+        <%= render 'layouts/partials/messages' %>
+      </div>
+
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: 'lp__form' }) do |f| %>
+
+        <div class="lp__field">
+          <label class="lp__field-label" for="<%= resource_name %>_email">E-mail</label>
+          <div class="lp__field-wrap">
+            <span class="lp__field-icon">
+              <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+              </svg>
+            </span>
+            <%= f.email_field :email,
+                autocomplete: "email",
+                id: "#{resource_name}_email",
+                class: 'lp__field-input',
+                placeholder: 'seu@email.com' %>
+          </div>
+        </div>
+
+        <div class="lp__field">
+          <label class="lp__field-label" for="<%= resource_name %>_password">Senha</label>
+          <div class="lp__field-wrap">
+            <span class="lp__field-icon">
+              <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
+            </span>
+            <%= f.password_field :password,
+                autocomplete: "current-password",
+                id: "#{resource_name}_password",
+                class: 'lp__field-input',
+                placeholder: '••••••••' %>
+          </div>
+        </div>
+
+        <div class="lp__row">
+          <% if devise_mapping.rememberable? %>
+            <label class="lp__remember">
+              <%= f.check_box :remember_me, class: 'lp__remember-input' %>
+              <span class="lp__remember-box"></span>
+              <span class="lp__remember-text">Lembrar de mim</span>
+            </label>
+          <% end %>
+
+        </div>
+
+        <%= f.submit "Entrar na plataforma", class: 'lp__submit' %>
+
+      <% end %>
+
+      <p class="lp__secure">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+        </svg>
+        Conexão criptografada · Dados protegidos
+      </p>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const words = [
+    "Shopify", "Nuvemshop", "WooCommerce", "Loja Integrada",
+    "Magento", "Tray", "VTEX", "Mercado Livre",
+    "Amazon", "Magalu", "Shopee", "E-commerce próprio"
+  ];
+
+  const el = document.getElementById("tw-text");
+  if (!el) return;
+
+  let wIdx = 0, cIdx = 0, deleting = false;
+
+  function type() {
+    const word = words[wIdx];
+    if (!deleting) {
+      el.textContent = word.substring(0, ++cIdx);
+      if (cIdx === word.length) { deleting = true; return setTimeout(type, 1600); }
+    } else {
+      el.textContent = word.substring(0, --cIdx);
+      if (cIdx === 0) { deleting = false; wIdx = (wIdx + 1) % words.length; }
+    }
+    setTimeout(type, deleting ? 42 : 72);
+  }
+  type();
+});
+</script>

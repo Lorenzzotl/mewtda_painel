@@ -1,0 +1,1601 @@
+<%#
+  1822 · Drop 01 — segue o Branding Book (out/2026).
+  Paleta: preto #111111, papel #F4F1EA, amarelo #F4C618 (destaque/preço),
+  verde #2B9A3E, azul #0A5CD6 (só em blocos). Vermelho #D9272E SÓ na corrente
+  que se rompe e no ícone dela no selo (decisão do cliente, 06/10).
+  Anton caixa alta = títulos; Archivo 400 texto / 600 destaque / 700 preço.
+  Endosso "produzido por HENRRI" só no rodapé.
+  Logo: enquanto não chega o SVG, algarismos em Anton (amarelo/verde/azul/amarelo).
+%>
+<% content_for :title, '1822 · Independência se veste.' %>
+<% deadline = @landing_page.ends_at && l(@landing_page.ends_at.in_time_zone, format: '%d/%m') %>
+<% presale_text = @landing_page.sales_open? ? (deadline ? "Pré-venda aberta até #{deadline}." : 'Pré-venda aberta.') : 'Pré-venda encerrada.' %>
+<%# Abas do drop: "1822" (camiseta da coleção, buscada pelo ID mesmo que não
+    esteja nos handles da página) e "Ladrão" (os demais produtos da página). %>
+<% product_1822_ref = 'gid://shopify/Product/10793095364902' %>
+<% product_1822 = @products.find { |p| p['id'] == product_1822_ref } || @storefront.product(product_1822_ref) %>
+<%# shirt = cor da camiseta no fundo da miniatura da estampa. As artes
+    (DTF 28cm, "1822-RESGATE" e "DEVOLVE") são as da camiseta branca: o texto
+    é preto, então a miniatura precisa de fundo branco. %>
+<% drop_tabs = [
+     { key: 'colecao-1822', label: '1822', shirt: '#FFFFFF', products: [product_1822].compact },
+     { key: 'ladrao', label: 'Ladrão', shirt: '#FFFFFF', products: @products.reject { |p| p['id'] == product_1822_ref } }
+   ].select { |tab| tab[:products].any? } %>
+<%# Arte de cada estampa na aba: app/assets/images/lp/drop_01_1822/<key>.(svg|png|webp),
+    de preferência com fundo transparente. Sem o arquivo, usa uma versão
+    tipográfica provisória. %>
+<% print_art_path = lambda do |key|
+     ext = %w[svg png webp].find { |e| Rails.root.join('app/assets/images/lp/drop_01_1822', "#{key}.#{e}").exist? }
+     ext && "lp/drop_01_1822/#{key}.#{ext}"
+   end %>
+<% all_products = drop_tabs.flat_map { |tab| tab[:products] } %>
+<% first_product = all_products.first %>
+<% installments = 4 %>
+<% whatsapp_help_url = "https://wa.me/553198025792?text=#{ERB::Util.url_encode('Oi! Estou com dúvidas sobre as camisetas do Drop 01 da 1822.')}" %>
+<%# Tabela de medidas da camiseta gola O HENRRI (cm). Tórax = volta inteira da
+    peça no peito. O modal mostra só os tamanhos que os produtos da página
+    vendem; se não achar a opção de tamanho, mostra a tabela toda. %>
+<% size_chart = [
+     { size: 'P',   chest: 106, length: 69 },
+     { size: 'M',   chest: 110, length: 71 },
+     { size: 'G',   chest: 114, length: 73 },
+     { size: 'GG',  chest: 118, length: 77 },
+     { size: 'XGG', chest: 122, length: 79 }
+   ] %>
+<% sizes_on_sale = all_products.flat_map { |p| Array(p['options']).select { |o| o['name'].to_s.match?(/\A(size|tamanho)\z/i) } }
+                               .flat_map { |o| Array(o['optionValues']).map { |v| v['name'].to_s.upcase } } %>
+<% size_rows = size_chart.select { |row| sizes_on_sale.include?(row[:size]) }.presence || size_chart %>
+<% content_for :head do %>
+  <meta name="description" content="1822 · Independência se veste. Drop 01: duas camisetas, uma estampa. <%= presale_text %>">
+  <meta property="og:title" content="1822 · Independência se veste.">
+  <meta property="og:description" content="Drop 01. Duas camisetas, uma estampa. <%= presale_text %>">
+  <% if first_product&.dig('featuredImage', 'url') %>
+    <meta property="og:image" content="<%= lp_image_url(first_product.dig('featuredImage', 'url'), 1200) %>">
+  <% end %>
+  <meta name="theme-color" content="#111111">
+  <script>
+    if (!window.matchMedia || !matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');
+    try { if (localStorage.getItem('lp_broke_<%= @landing_page.id %>')) document.documentElement.classList.add('chain-done'); } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --preto: #111111;
+      --papel: #F4F1EA;
+      --amarelo: #F4C618;
+      --verde: #2B9A3E;
+      --azul: #0A5CD6;
+      --vermelho: #D9272E; /* só na corrente */
+      --branco: #FFFFFF;
+      --cinza: #4A4744;
+      --cinza-claro: #C9C5BC;
+      --gutter: clamp(16px, 5vw, 88px);
+      --max: 1240px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { overflow-x: clip; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body { overflow-x: clip; margin: 0; background: var(--preto); color: var(--papel); font: 400 17px/1.55 'Archivo', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    img { display: block; max-width: 100%; height: auto; }
+    a { color: inherit; }
+    button { font: inherit; }
+
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+    .display { font-family: 'Anton', Impact, sans-serif; font-weight: 400; text-transform: uppercase; line-height: 1.04; letter-spacing: .005em; margin: 0; }
+    .eyebrow { font: 700 13px/1 'Archivo', sans-serif; letter-spacing: .28em; text-transform: uppercase; margin: 0 0 18px; }
+    .eyebrow--amarelo { color: var(--amarelo); }
+    .eyebrow--verde { color: var(--verde); }
+
+    /* Faixa tricolor, como na capa do book */
+    .flagbar { display: grid; grid-template-columns: repeat(3, 1fr); height: 8px; }
+    .flagbar span:nth-child(1) { background: var(--verde); }
+    .flagbar span:nth-child(2) { background: var(--amarelo); }
+    .flagbar span:nth-child(3) { background: var(--azul); }
+
+    /* Logo (placeholder em Anton até chegar o vetor) */
+    .logo { font-family: 'Anton', Impact, sans-serif; line-height: .82; letter-spacing: -.01em; display: inline-flex; }
+    .logo--cores span:nth-child(1), .logo--cores span:nth-child(4) { color: var(--amarelo); }
+    .logo--cores span:nth-child(2) { color: var(--verde); }
+    .logo--cores span:nth-child(3) { color: var(--azul); }
+    .logo--branco { color: var(--papel); }
+    .logo--preto { color: var(--preto); }
+
+    /* Topo */
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; padding-bottom: 22px; }
+    .top .logo { font-size: 34px; }
+    .top__cta { font: 700 13px/1 'Archivo', sans-serif; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; color: var(--preto); background: var(--amarelo); padding: 12px 16px; border-radius: 4px; }
+
+    /* Hero */
+    .hero { padding-top: clamp(32px, 7vw, 88px); padding-bottom: clamp(56px, 9vw, 120px); }
+    .hero .logo { font-size: clamp(120px, 30vw, 380px); margin-left: -.03em; padding-top: .08em; }
+    .hero__title { font-size: clamp(44px, 8.4vw, 104px); color: var(--papel); margin-top: clamp(18px, 3vw, 32px); }
+    .hero__sub { color: #D9D5CC; font-size: clamp(17px, 1.6vw, 20px); max-width: 34em; margin: 20px 0 32px; }
+    .hero__sub strong { color: var(--papel); font-weight: 600; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 28px; border: 0; border-radius: 4px; cursor: pointer;
+           font: 400 22px/1 'Anton', Impact, sans-serif; letter-spacing: .04em; text-transform: uppercase; text-decoration: none; transition: transform .12s ease, filter .12s ease; }
+    .btn:active { transform: translateY(1px); }
+    .btn--amarelo { background: var(--amarelo); color: var(--preto); }
+    .btn--amarelo:hover { filter: brightness(1.06); }
+
+    /* Drop */
+    .drop { padding-top: clamp(56px, 8vw, 104px); padding-bottom: clamp(64px, 9vw, 120px); }
+    .drop__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .drop__title { font-size: clamp(64px, 11vw, 132px); color: var(--papel); padding-top: .06em; }
+    .drop__intro p { color: #D9D5CC; font-size: 19px; margin: 18px 0 0; max-width: 24em; }
+    .drop__intro .drop__line { color: var(--papel); font-weight: 600; }
+    .drop__intro p.eyebrow { color: var(--amarelo); font-size: 13px; margin: 0 0 18px; }
+    .drop__presale { display: inline-block; margin-top: 26px; font: 700 14px/1 'Archivo', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--preto); background: var(--amarelo); padding: 10px 14px; border-radius: 3px; }
+    .drop__presale--closed { background: var(--papel); }
+    .products { display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; }
+    .drop__grid[hidden] { display: none; }
+
+    /* Abas do drop: cada aba mostra a estampa da camiseta */
+    .drop__tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 180px)); gap: 12px; margin-bottom: clamp(32px, 5vw, 56px); }
+    .drop__tab { display: grid; gap: 12px; padding: 10px 10px 14px; border-radius: 8px; border: 1.5px solid #3A3A3A; background: #181818; color: #8F8B83; cursor: pointer;
+                     text-align: left; transition: border-color .2s, color .2s, transform .2s; }
+    .drop__tab:hover { border-color: var(--papel); color: var(--papel); }
+    .drop__tab:active { transform: translateY(1px); }
+    .drop__tab[aria-selected="true"] { border-color: var(--amarelo); color: var(--papel); }
+    .drop__tab:focus-visible { outline: 2px solid var(--amarelo); outline-offset: 2px; }
+    .drop__tab-thumb { position: relative; aspect-ratio: 1; border-radius: 4px; border: 1px solid #262626; background: var(--shirt, #111111); }
+    .drop__tab-thumb .print { inset: 16%; }
+    .drop__tab-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px;
+                          font: 400 clamp(22px, 2.4vw, 30px)/1 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+    .drop__tab-name i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; transition: background .2s; }
+    .drop__tab[aria-selected="true"] .drop__tab-name i { background: var(--amarelo); border-color: var(--amarelo); }
+    /* Celular: abas lado a lado dividindo a largura (com auto-fill + máximo de 180px
+       o grid só cabia uma por linha). Tocar numa aba rola até a camiseta dela;
+       a folga no topo é pros botões flutuantes de som e carrinho não cobrirem. */
+    @media (max-width: 719px) {
+      .drop__tabs { grid-template-columns: repeat(var(--tabs, 2), minmax(0, 1fr)); gap: 10px; }
+      .drop__tab { padding: 8px 8px 12px; gap: 10px; }
+    }
+    .drop__grid { scroll-margin-top: 76px; }
+
+    /* Navegação rápida das estampas: trilho fixo no canto esquerdo */
+    .printnav { position: fixed; z-index: 55; left: 16px; top: 50%; display: grid; gap: 8px; padding: 8px; border-radius: 10px;
+                background: rgba(17, 17, 17, .88); border: 1px solid #3A3A3A; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, .4); transform: translate(calc(-100% - 24px), -50%); transition: transform .45s cubic-bezier(.2,.9,.2,1); }
+    .printnav.is-visible { transform: translate(0, -50%); }
+    .printnav__title { margin: 2px -4px 0; text-align: center; font: 700 10px/1 'Archivo', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--amarelo); }
+    .printnav__item { position: relative; display: block; width: 48px; aspect-ratio: 1; padding: 0; border-radius: 6px; border: 1.5px solid #3A3A3A;
+                      background: var(--shirt, #111111); cursor: pointer; transition: border-color .2s, transform .2s; }
+    .printnav__item .print { inset: 14%; }
+    .printnav__item:hover { border-color: var(--papel); transform: translateX(2px); }
+    .printnav__item[aria-current="true"] { border-color: var(--amarelo); }
+    .printnav__item:focus-visible { outline: 2px solid var(--amarelo); outline-offset: 2px; }
+    .printnav__label { position: absolute; left: calc(100% + 12px); top: 50%; transform: translate(-4px, -50%); opacity: 0; pointer-events: none; white-space: nowrap;
+                       padding: 7px 10px; border-radius: 4px; background: var(--papel); color: var(--preto);
+                       font: 400 16px/1 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .03em; transition: opacity .2s, transform .2s; }
+    .printnav__item:hover .printnav__label, .printnav__item:focus-visible .printnav__label { opacity: 1; transform: translate(0, -50%); }
+    /* "Carimbo": ao escolher, a miniatura afunda e solta as 3 formas da estampa (anel, barra, diagonal) */
+    .printnav__burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+    .printnav__burst i { position: absolute; display: block; opacity: 0; }
+    .printnav__burst i:nth-child(3n+1) { width: 13px; height: 13px; margin: -6.5px; border-radius: 50%; border: 3px solid var(--verde); }
+    .printnav__burst i:nth-child(3n+2) { width: 5px; height: 16px; margin: -8px -2.5px; background: var(--amarelo); }
+    .printnav__burst i:nth-child(3n) { width: 14px; height: 14px; margin: -7px; background: var(--azul); clip-path: polygon(0 100%, 26% 100%, 100% 0, 74% 0); }
+    .printnav__item.is-stamped { animation: lp-stamp .45s cubic-bezier(.3,1.6,.5,1); }
+    .printnav__item.is-stamped .printnav__burst i { animation: lp-burst .85s cubic-bezier(.15,.8,.3,1) forwards; }
+    @keyframes lp-stamp { 0% { transform: scale(1); } 30% { transform: scale(.82) rotate(-4deg); } 100% { transform: scale(1); } }
+    @keyframes lp-burst {
+      0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(.4); }
+      70% { opacity: 1; }
+      100% { opacity: 0; transform: rotate(var(--a)) translateY(-52px) rotate(calc(var(--a) * -2)) scale(1); }
+    }
+    .printnav.is-hello { animation: lp-pulse 1.2s ease-out 2; }
+
+    /* Celular: o trilho vira uma doca no canto inferior direito, com cursor amarelo
+       deslizando até a estampa ativa e o nome de cada uma embaixo da arte.
+       Fica na tela também durante a compra (é ali que mais se troca de estampa). */
+    .printnav__tag, .printnav__cursor { display: none; }
+    @media (max-width: 1023px) {
+      .printnav { left: auto; right: 12px; top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); grid-auto-flow: column; gap: 8px; padding: 6px; border-radius: 12px;
+                  transform: translateY(calc(100% + 120px)); transition: transform .5s cubic-bezier(.2,.9,.2,1), bottom .3s ease; }
+      .printnav.is-visible { transform: none; }
+      /* Com barra de compra na página, a doca fica SEMPRE acima dela, parada: antes ela
+         descia 68px quando a barra sumia (ao ir pro drop) e o 2º toque caía no lugar errado. */
+      body:has(.stickybar) .printnav { bottom: calc(80px + env(safe-area-inset-bottom)); transition: transform .5s cubic-bezier(.2,.9,.2,1); }
+      /* faixa tricolor desenhando na borda de cima quando a doca entra */
+      .printnav::before { content: ""; position: absolute; left: 10px; right: 10px; top: -1px; height: 3px; border-radius: 3px;
+                          background: linear-gradient(90deg, var(--verde) 0 33.3%, var(--amarelo) 33.3% 66.6%, var(--azul) 66.6%);
+                          transform: scaleX(0); transform-origin: left; transition: transform .6s .25s cubic-bezier(.2,.9,.2,1); }
+      .printnav.is-visible::before { transform: scaleX(1); }
+      /* Cada opção mostra a arte e o NOME embaixo ("1822", "LADRÃO"): antes a etiqueta
+         "Estampa · X" em cima parecia uma 3ª opção e o toque nela "não mudava nada".
+         touch-action tira o atraso de duplo toque; o toque é tratado no pointerup (JS). */
+      .printnav__title, .printnav__tag { display: none; }
+      .printnav__item { width: 56px; height: 70px; aspect-ratio: auto; z-index: 1; border-color: transparent;
+                        touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+      .printnav__item .print { inset: 5px 5px 21px; }
+      .printnav__item:hover { transform: none; border-color: transparent; }
+      .printnav__item[aria-current="true"] { border-color: transparent; }
+      .printnav__label, .printnav__item:hover .printnav__label, .printnav__item:focus-visible .printnav__label {
+        display: block; position: absolute; left: 0; right: 0; top: auto; bottom: 6px; padding: 0; transform: none; opacity: 1; pointer-events: none;
+        background: none; color: var(--preto); font: 400 12px/1 'Anton', Impact, sans-serif; letter-spacing: .03em; text-align: center; }
+      .printnav__cursor { display: block; position: absolute; left: 6px; top: 6px; width: 56px; height: 70px; border-radius: 6px; border: 2.5px solid var(--amarelo);
+                          box-shadow: 0 0 0 3px rgba(244, 198, 24, .18), 0 6px 16px rgba(244, 198, 24, .25); pointer-events: none; z-index: 2;
+                          transform: translateX(calc(var(--active, 0) * 64px)); transition: transform .45s cubic-bezier(.3,1.4,.5,1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .printnav, .printnav__item, .printnav__label, .printnav__cursor, .printnav::before { transition: none; }
+      .printnav.is-hello, .printnav__item.is-stamped, .printnav__tag.is-flipping { animation: none; }
+      .printnav__burst { display: none; }
+    }
+
+    /* Arte da estampa (imagem ou versão tipográfica provisória), escala pelo tamanho da caixa */
+    .print { position: absolute; inset: 0; display: grid; place-items: center; container-type: size; }
+    .print img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+    .print .logo { font-size: 50cqmin; line-height: .82; }
+    .print__word { display: grid; justify-items: center; gap: 7cqmin; }
+    .print__word strong { font: 400 29cqmin/.95 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .01em; color: var(--papel); padding-top: .08em; }
+    .print__shapes { display: flex; align-items: center; gap: 7cqmin; }
+    .print__shapes i { display: block; }
+    .print__shapes i:nth-child(1) { width: 15cqmin; height: 15cqmin; border-radius: 50%; border: 4cqmin solid var(--verde); }
+    .print__shapes i:nth-child(2) { width: 5cqmin; height: 18cqmin; background: var(--amarelo); }
+    .print__shapes i:nth-child(3) { width: 15cqmin; height: 15cqmin; background: var(--azul); clip-path: polygon(0 100%, 26% 100%, 100% 0, 74% 0); }
+
+    .product__media { background: #E7E3DA; border-radius: 6px; overflow: hidden; aspect-ratio: 4 / 5; }
+    .product__media img { width: 100%; height: 100%; object-fit: cover; }
+    .product__media--empty { display: grid; place-items: center; }
+    .product__media--empty .logo { font-size: 88px; color: #CFCAC0; }
+    .product__name { font: 700 20px/1.25 'Archivo', sans-serif; margin: 16px 0 6px; color: var(--papel); }
+    .product__price { font: 700 26px/1 'Archivo', sans-serif; color: var(--amarelo); margin: 0 0 18px; display: flex; align-items: baseline; gap: 10px; }
+    .product__price s { font-size: 16px; font-weight: 400; color: #9A968E; }
+
+    .lp-buy__option { border: 0; margin: 0 0 16px; padding: 0; }
+    .lp-buy__legend { font: 600 12px/1 'Archivo', sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #BDB8AE; padding: 0; margin-bottom: 10px; }
+    .lp-buy__values { display: flex; flex-wrap: wrap; gap: 8px; }
+    .lp-buy__value { min-width: 52px; height: 48px; padding: 0 14px; border-radius: 4px; border: 1.5px solid #3A3A3A; background: transparent; color: var(--papel); font-weight: 600; font-size: 16px; cursor: pointer; }
+    .lp-buy__value:hover { border-color: var(--papel); }
+    .lp-buy__value.is-selected { background: var(--papel); color: var(--preto); border-color: var(--papel); }
+    .lp-buy__value.is-unavailable { color: #6B6862; text-decoration: line-through; border-style: dashed; }
+    .lp-buy.needs-selection .lp-buy__value:not(.is-selected) { border-color: var(--amarelo); }
+    .lp-buy__submit { width: 100%; min-height: 60px; border: 0; border-radius: 4px; background: var(--amarelo); color: var(--preto); cursor: pointer;
+                      font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: .05em; text-transform: uppercase; margin-top: 6px; }
+    .lp-buy__submit:hover { filter: brightness(1.06); }
+    .lp-buy__submit:disabled { background: #3A3A3A; color: #8A867E; cursor: not-allowed; filter: none; }
+    .lp-buy__submit.is-loading { background: var(--amarelo); color: var(--preto); opacity: .7; cursor: progress; }
+    .lp-buy__message { min-height: 1.4em; margin: 10px 0 0; font-size: 15px; color: var(--amarelo); }
+    .lp-buy__closed { margin: 6px 0 0; padding: 16px; border: 1.5px solid #3A3A3A; border-radius: 4px; font: 600 16px/1.4 'Archivo', sans-serif; color: #D9D5CC; }
+    .product__note { font-size: 14px; color: #A9A59D; margin: 12px 0 0; }
+
+    /* Galeria (uma foto por cor) */
+    .product__gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .product__gallery .product__media { margin: 0; }
+    .product__gallery .product__media:only-child { grid-column: 1 / -1; }
+    .product__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 20px 0 22px; }
+    .product__head .product__name { margin: 0; font-size: 22px; }
+    .product__head .product__price { margin: 0; }
+    .product__price small { font: 400 14px 'Archivo', sans-serif; color: #A9A59D; }
+    .product__pricing { display: grid; justify-items: end; gap: 8px; }
+    /* celular: nome e preço quebram em linhas; preço e parcelas alinham à esquerda */
+    @media (max-width: 719px) { .product__pricing { justify-items: start; } }
+    .product__installments { margin: 0; font-size: 14px; color: #BDB8AE; }
+    .product__installments strong { color: var(--papel); font-weight: 600; }
+
+    /* Monte seu kit */
+    .lp-kit { background: #181818; border: 1px solid #2A2A2A; border-radius: 8px; padding: 22px; }
+    .lp-kit__step + .lp-kit__step { margin-top: 24px; }
+    .lp-kit__label { display: block; font: 400 24px/1 'Anton', Impact, sans-serif; text-transform: uppercase; color: var(--papel); margin-bottom: 14px; }
+    .lp-kit__qty { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .lp-kit__qty-btn { position: relative; display: grid; gap: 4px; justify-items: center; padding: 12px 6px; border-radius: 6px; border: 1.5px solid #3A3A3A; background: transparent; color: var(--papel); cursor: pointer; }
+    .lp-kit__qty-btn strong { font: 400 34px/1 'Anton', Impact, sans-serif; }
+    .lp-kit__qty-btn span { font: 600 11px/1 'Archivo', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #BDB8AE; }
+    .lp-kit__qty-btn em { font: 700 13px/1.2 'Archivo', sans-serif; font-style: normal; color: var(--amarelo); white-space: nowrap; }
+    .lp-kit__qty-btn:hover { border-color: var(--papel); }
+    .lp-kit__qty-btn.is-selected { background: var(--amarelo); border-color: var(--amarelo); color: var(--preto); }
+    .lp-kit__qty-btn.is-selected span, .lp-kit__qty-btn.is-selected em { color: var(--preto); }
+    .lp-kit__slots { display: grid; gap: 10px; }
+    .lp-kit__slot { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px; border-radius: 6px; background: var(--preto); border: 1.5px solid #2A2A2A; }
+    .lp-kit__slot.needs-selection { border-color: var(--amarelo); }
+    .lp-kit__thumb { width: 64px; aspect-ratio: 4 / 5; border-radius: 4px; overflow: hidden; background: #E7E3DA; }
+    .lp-kit__thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .lp-kit__slot-title { display: block; font: 700 13px/1 'Archivo', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--papel); margin: 2px 0 10px; }
+    .lp-kit__option { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    .lp-kit__option + .lp-kit__option { margin-top: 8px; }
+    .lp-kit__option-name { font: 600 11px/1 'Archivo', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #8F8B83; min-width: 64px; }
+    .lp-kit__values { display: flex; flex-wrap: wrap; gap: 6px; }
+    .lp-kit__value { min-width: 42px; height: 38px; padding: 0 12px; border-radius: 4px; border: 1.5px solid #3A3A3A; background: transparent; color: var(--papel); font-weight: 600; font-size: 14px; cursor: pointer; }
+    .lp-kit__value:hover { border-color: var(--papel); }
+    .lp-kit__value.is-selected { background: var(--papel); color: var(--preto); border-color: var(--papel); }
+    .lp-kit__value.is-unavailable { color: #6B6862; text-decoration: line-through; border-style: dashed; }
+    .lp-kit__slot.needs-selection .lp-kit__option .lp-kit__values:not(:has(.is-selected)) .lp-kit__value { border-color: var(--amarelo); }
+    .lp-kit__summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 22px 0 12px; padding-top: 18px; border-top: 1px solid #2A2A2A; }
+    .lp-kit__summary span { color: #D9D5CC; font-weight: 600; }
+    .lp-kit__summary strong { font: 700 28px/1 'Archivo', sans-serif; color: var(--amarelo); }
+    .lp-kit__totals { display: inline-flex; align-items: baseline; gap: 10px; }
+    .lp-kit__totals s { font: 400 15px/1 'Archivo', sans-serif; color: #8F8B83; }
+    .lp-kit__totals s:empty { display: none; } /* sem desconto: o espaço do riscado não empurra o total */
+    .lp-kit__installments { margin: -4px 0 14px; text-align: right; font-size: 14px; color: #BDB8AE; }
+    .lp-kit__installments strong { color: var(--papel); font-weight: 600; }
+    .lp-kit__off { position: absolute; top: -9px; right: -4px; padding: 3px 6px; border-radius: 3px; background: var(--verde); color: var(--papel);
+                   font: 700 11px/1 'Archivo', sans-serif; letter-spacing: .02em; }
+    .lp-kit__submit { width: 100%; min-height: 60px; border: 0; border-radius: 4px; background: var(--amarelo); color: var(--preto); cursor: pointer;
+                      font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+    .lp-kit__submit:hover { filter: brightness(1.06); }
+    .lp-kit__submit:disabled { background: #3A3A3A; color: #8A867E; cursor: not-allowed; filter: none; }
+    .lp-kit__submit.is-loading { background: var(--amarelo); color: var(--preto); opacity: .7; cursor: progress; }
+    .lp-kit__submit.is-added { background: var(--verde); color: var(--papel); }
+
+    /* ===== Trilha sonora: botão-equalizador nas cores do logo (dançam tocando, param no mudo) ===== */
+    .top__sound, .sound-fab { position: relative; display: inline-grid; place-items: center; padding: 0; cursor: pointer; color: var(--papel); }
+    .top__sound { width: 42px; height: 42px; border: 1.5px solid #3A3A3A; border-radius: 4px; background: transparent; transition: border-color .2s; }
+    .top__sound:hover { border-color: var(--papel); }
+    .sound-fab { position: fixed; z-index: 70; top: 14px; left: 14px; width: 50px; height: 50px; border-radius: 50%; border: 1.5px solid #3A3A3A;
+                 background: rgba(17, 17, 17, .9); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
+                 opacity: 0; visibility: hidden; transform: scale(.5); pointer-events: none;
+                 transition: opacity .25s, visibility .25s, transform .35s cubic-bezier(.3,1.5,.5,1); }
+    .lp-top-gone .sound-fab { opacity: 1; visibility: visible; transform: none; pointer-events: auto; }
+    .sound-bars { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+    .sound-bars i { display: block; width: 3px; height: 4px; border-radius: 1px; transition: height .3s; }
+    .sound-bars i:nth-child(1), .sound-bars i:nth-child(4) { background: var(--amarelo); }
+    .sound-bars i:nth-child(2) { background: var(--verde); }
+    .sound-bars i:nth-child(3) { background: var(--azul); }
+    /* mudo: traço diagonal por cima das barras paradas */
+    .top__sound::after, .sound-fab::after { content: ""; position: absolute; width: 22px; height: 2px; border-radius: 2px; background: var(--papel); transform: rotate(-45deg); transition: opacity .2s, transform .2s; }
+    .lp-sound-on .top__sound::after, .lp-sound-on .sound-fab::after { opacity: 0; transform: rotate(-45deg) scaleX(0); }
+    .lp-sound-on .sound-bars i { animation: lp-eq .9s ease-in-out infinite alternate; }
+    .lp-sound-on .sound-bars i:nth-child(1) { animation-duration: .7s; }
+    .lp-sound-on .sound-bars i:nth-child(2) { animation-duration: 1.1s; animation-delay: -.3s; }
+    .lp-sound-on .sound-bars i:nth-child(3) { animation-duration: .8s; animation-delay: -.5s; }
+    .lp-sound-on .sound-bars i:nth-child(4) { animation-duration: 1s; animation-delay: -.2s; }
+    @keyframes lp-eq { 0% { height: 4px; } 100% { height: 18px; } }
+    /* som bloqueado pelo navegador: o botão pulsa em amarelo chamando o toque */
+    .lp-sound-blocked .top__sound, .lp-sound-blocked .sound-fab { border-color: var(--amarelo); animation: lp-pulse 1.6s ease-out infinite; }
+    @media (max-width: 1023px) { .sound-fab { top: 12px; left: 12px; width: 46px; height: 46px; } }
+    @media (prefers-reduced-motion: reduce) {
+      .lp-sound-on .sound-bars i { animation: none; height: 12px; }
+      .sound-fab { transition: none; }
+      .lp-sound-blocked .top__sound, .lp-sound-blocked .sound-fab { animation: none; }
+    }
+
+    /* ===== Carrinho (shared/_cart): botão flutuante + drawer em "cupom" de papel ===== */
+    .top__actions { display: flex; align-items: center; gap: 10px; }
+    .top__cart { position: relative; display: inline-grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1.5px solid #3A3A3A; border-radius: 4px;
+                 background: transparent; color: var(--papel); cursor: pointer; transition: border-color .2s; }
+    .top__cart:hover { border-color: var(--papel); }
+    .top__cart svg, .lp-cart-fab svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+    .top__cart b, .lp-cart-fab b { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--amarelo); color: var(--preto);
+                                   font: 700 12px/20px 'Archivo', sans-serif; text-align: center; }
+    .top__cart b:empty, .top__cart b[data-zero] { display: none; }
+    .lp-cart-fab { position: fixed; z-index: 70; top: 14px; right: 14px; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border-radius: 50%; cursor: pointer;
+                   border: 1.5px solid #3A3A3A; background: rgba(17, 17, 17, .9); color: var(--papel); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+                   box-shadow: 0 10px 26px rgba(0, 0, 0, .45); transition: opacity .25s, transform .35s cubic-bezier(.3,1.5,.5,1), visibility .25s; }
+    .lp-cart-fab[hidden] { display: grid; opacity: 0; visibility: hidden; transform: scale(.5); pointer-events: none; }
+    .lp-cart-anchored .lp-cart-fab { opacity: 0; visibility: hidden; transform: scale(.5); }
+    .lp-cart-fab.is-bumped, .top__cart.is-bumped { animation: lp-cart-bump .5s cubic-bezier(.3,1.6,.5,1); }
+    @keyframes lp-cart-bump { 0% { transform: scale(1); } 35% { transform: scale(1.22) rotate(-8deg); } 100% { transform: scale(1); } }
+    .lp-cart-ghost { position: fixed; z-index: 90; object-fit: cover; border-radius: 6px; pointer-events: none; box-shadow: 0 12px 30px rgba(0, 0, 0, .5); }
+
+    .lp-cart { position: fixed; inset: 0; z-index: 100; }
+    .lp-cart[hidden] { display: none; }
+    .lp-cart-locked, .lp-cart-locked body { overflow: hidden; }
+    .lp-cart__overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); opacity: 0; transition: opacity .3s; }
+    .lp-cart.is-open .lp-cart__overlay { opacity: 1; }
+    .lp-cart__panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); display: flex; flex-direction: column; outline: 0;
+                      background: var(--papel); color: var(--preto); box-shadow: -18px 0 50px rgba(0, 0, 0, .5);
+                      transform: translateX(105%); transition: transform .45s cubic-bezier(.2,.9,.2,1); }
+    .lp-cart.is-open .lp-cart__panel { transform: none; }
+    /* borda serrilhada de cupom do lado esquerdo */
+    .lp-cart__panel::before { content: ""; position: absolute; top: 0; bottom: 0; left: -9px; width: 10px;
+                              background: radial-gradient(circle at 0 50%, transparent 5px, var(--papel) 5.5px) 0 0 / 10px 16px repeat-y; }
+    .lp-cart__flag { display: grid; grid-template-columns: repeat(3, 1fr); height: 6px; flex: none; }
+    .lp-cart__flag span:nth-child(1) { background: var(--verde); }
+    .lp-cart__flag span:nth-child(2) { background: var(--amarelo); }
+    .lp-cart__flag span:nth-child(3) { background: var(--azul); }
+    .lp-cart__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px 14px; border-bottom: 2px dashed var(--cinza-claro); }
+    .lp-cart__title { margin: 0; padding-top: .06em; font: 400 32px/1 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .01em; }
+    .lp-cart__title small { font-size: 22px; color: var(--cinza); }
+    .lp-cart__close { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--preto); cursor: pointer; }
+    .lp-cart__close:hover { background: rgba(17, 17, 17, .07); }
+    .lp-cart__close svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+    .lp-cart__body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 22px; }
+    .lp-cart__lines { list-style: none; margin: 0; padding: 0; }
+    .lp-cart__line { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--cinza-claro);
+                     transition: opacity .25s, transform .25s; }
+    .lp-cart.is-open .lp-cart__line { animation: lp-line-in .45s cubic-bezier(.2,.9,.2,1) backwards; }
+    .lp-cart.is-open .lp-cart__line:nth-child(2) { animation-delay: .05s; }
+    .lp-cart.is-open .lp-cart__line:nth-child(3) { animation-delay: .1s; }
+    .lp-cart.is-open .lp-cart__line:nth-child(n+4) { animation-delay: .15s; }
+    @keyframes lp-line-in { from { opacity: 0; transform: translateX(24px); } }
+    .lp-cart__line.is-leaving { opacity: 0; transform: translateX(30px); }
+    .lp-cart__thumb { aspect-ratio: 4 / 5; border-radius: 4px; overflow: hidden; background: #E7E3DA; }
+    .lp-cart__thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .lp-cart__info { display: grid; align-content: start; gap: 4px; }
+    .lp-cart__info strong { font: 400 20px/1.05 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .01em; padding-top: .06em; }
+    .lp-cart__info > span { font: 600 13px/1.3 'Archivo', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--cinza); }
+    .lp-cart__stepper { display: inline-flex; align-items: center; width: max-content; margin-top: 6px; border: 1.5px solid var(--preto); border-radius: 4px; }
+    .lp-cart__stepper button { width: 34px; height: 32px; padding: 0; border: 0; background: transparent; color: var(--preto); cursor: pointer; font: 700 18px/1 'Archivo', sans-serif; }
+    .lp-cart__stepper button:hover { background: rgba(17, 17, 17, .07); }
+    .lp-cart__stepper output { min-width: 26px; text-align: center; font: 700 15px/1 'Archivo', sans-serif; font-variant-numeric: tabular-nums; }
+    .lp-cart__price { display: grid; justify-items: end; align-content: start; gap: 2px; }
+    .lp-cart__price s { font: 400 13px/1.2 'Archivo', sans-serif; color: var(--cinza); }
+    .lp-cart__price strong { font: 700 16px/1.2 'Archivo', sans-serif; }
+    .lp-cart__remove { margin-top: auto; padding: 4px 0; border: 0; background: none; color: var(--cinza); cursor: pointer; font: 600 12px/1 'Archivo', sans-serif; letter-spacing: .06em;
+                       text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; }
+    .lp-cart__remove:hover { color: var(--preto); }
+    .lp-cart.is-busy .lp-cart__lines, .lp-cart.is-busy .lp-cart__sums { opacity: .5; pointer-events: none; transition: opacity .2s; }
+    .lp-cart__empty { padding: 48px 0; text-align: center; }
+    .lp-cart__empty p { margin: 0 0 18px; font: 400 26px/1.1 'Anton', Impact, sans-serif; text-transform: uppercase; }
+    .lp-cart__foot { flex: none; padding: 16px 22px calc(16px + env(safe-area-inset-bottom)); border-top: 2px dashed var(--cinza-claro); background: var(--papel); }
+    .lp-cart__foot[hidden] { display: none; }
+    .lp-cart__sums { display: grid; gap: 6px; margin: 0; }
+    .lp-cart__sums div { display: flex; justify-content: space-between; gap: 12px; font: 400 15px/1.3 'Archivo', sans-serif; }
+    .lp-cart__sums dt, .lp-cart__sums dd { margin: 0; }
+    .lp-cart__discount { color: var(--verde); font-weight: 600; }
+    .lp-cart__discount[hidden] { display: none; }
+    .lp-cart__total { padding-top: 8px; margin-top: 2px; border-top: 1px solid var(--cinza-claro); }
+    .lp-cart__total dt { font: 400 24px/1 'Anton', Impact, sans-serif; text-transform: uppercase; padding-top: .06em; }
+    .lp-cart__total dd { font: 700 22px/1 'Archivo', sans-serif; }
+    .lp-cart__installments { margin: 6px 0 0; text-align: right; font-size: 14px; color: var(--cinza); }
+    .lp-cart__installments:empty { display: none; }
+    .lp-cart__note { margin: 8px 0 14px; font-size: 13px; color: var(--cinza); }
+    .lp-cart__checkout { position: relative; width: 100%; min-height: 58px; border: 0; border-radius: 4px; background: var(--preto); color: var(--amarelo); cursor: pointer; overflow: hidden;
+                         font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+    /* brilho atravessando o botão de finalizar, de vez em quando */
+    .motion .lp-cart.is-open .lp-cart__checkout::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; transform: skewX(-20deg);
+                                                         background: linear-gradient(90deg, transparent, rgba(244, 198, 24, .35), transparent); animation: lp-shine 3.2s 1s ease-in-out infinite; }
+    @keyframes lp-shine { 0%, 60% { left: -40%; } 100% { left: 130%; } }
+    .lp-cart__checkout:hover { background: #2A2A2A; }
+    .lp-cart__checkout:disabled { background: #3A3A3A; color: #8A867E; cursor: not-allowed; }
+    .lp-cart__checkout.is-loading { opacity: .75; cursor: progress; }
+    .lp-cart__continue { display: block; width: max-content; margin: 12px auto 0; color: var(--preto); font: 600 13px/1 'Archivo', sans-serif; letter-spacing: .1em; text-transform: uppercase;
+                         text-decoration: underline; text-underline-offset: 4px; }
+    .lp-cart__empty .lp-cart__continue { display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border-radius: 4px; background: var(--preto); color: var(--amarelo);
+                                         font: 400 20px/1 'Anton', Impact, sans-serif; letter-spacing: .04em; text-decoration: none; }
+    .lp-cart__message { min-height: 1.2em; margin: 8px 0 0; text-align: center; font-size: 14px; color: #B3261E; }
+    .lp-cart__message:empty { display: none; }
+    @media (max-width: 1023px) { .lp-cart-fab { top: 12px; right: 12px; width: 46px; height: 46px; } }
+    @media (prefers-reduced-motion: reduce) {
+      .lp-cart__panel, .lp-cart__overlay, .lp-cart-fab { transition: none; }
+      .lp-cart.is-open .lp-cart__line, .lp-cart-fab.is-bumped, .top__cart.is-bumped { animation: none; }
+    }
+    .lp-kit__message { min-height: 1.4em; margin: 10px 0 0; font-size: 15px; color: var(--amarelo); }
+    .lp-kit__closed { margin: 6px 0 0; padding: 16px; border: 1.5px solid #3A3A3A; border-radius: 4px; font: 600 16px/1.4 'Archivo', sans-serif; color: #D9D5CC; }
+    .lp-kit__help { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; margin: 0 0 10px; border-radius: 4px; background: var(--verde); color: var(--papel);
+                    text-decoration: none; font: 400 20px/1 'Anton', Impact, sans-serif; letter-spacing: .05em; text-transform: uppercase; transition: filter .12s ease; }
+    .lp-kit__help:hover { filter: brightness(1.08); }
+    .lp-kit__help:focus-visible { outline: 2px solid var(--papel); outline-offset: 2px; }
+    .lp-kit__help svg { width: 22px; height: 22px; fill: currentColor; }
+    .lp-kit__size-link { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 4px 0; border: 0; background: none; cursor: pointer;
+                         color: var(--papel); font: 600 15px/1 'Archivo', sans-serif; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: #6B6862; }
+    .lp-kit__size-link:hover { color: var(--amarelo); text-decoration-color: currentColor; }
+    .lp-kit__size-link svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+
+    /* Modal da tabela de medidas */
+    .sizes { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: 8px; background: var(--papel); color: var(--preto);
+             box-shadow: 0 24px 60px rgba(0, 0, 0, .55); overflow: auto; }
+    .sizes::backdrop { background: rgba(17, 17, 17, .72); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+    .sizes[open] { animation: lp-sizes-in .28s cubic-bezier(.2,.9,.2,1); }
+    .sizes[open]::backdrop { animation: lp-fade .28s ease; }
+    @keyframes lp-sizes-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+    .sizes__body { padding: 28px 24px 24px; }
+    .sizes__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .sizes__title { font-size: clamp(34px, 6vw, 44px); }
+    .sizes__close { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin: -6px -6px 0 0; border: 0; border-radius: 50%; background: transparent; color: var(--preto); cursor: pointer; }
+    .sizes__close:hover { background: #E7E3DA; }
+    .sizes__close svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    .sizes__figure { display: block; width: min(100%, 260px); margin: 0 auto 20px; }
+    .sizes__tee { fill: #E7E3DA; stroke: var(--preto); stroke-width: 2; stroke-linejoin: round; }
+    .sizes__measure { stroke-width: 2.5; stroke-linecap: round; }
+    .sizes__measure--a { stroke: var(--verde); } .sizes__measure--b { stroke: var(--azul); }
+    .sizes__tag { font: 400 18px 'Anton', Impact, sans-serif; fill: var(--papel); }
+    .sizes__table { width: 100%; border-collapse: collapse; font: 400 16px/1 'Archivo', sans-serif; font-variant-numeric: tabular-nums; }
+    .sizes__table th, .sizes__table td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #D9D5CC; }
+    .sizes__table thead th { font: 600 11px/1.3 'Archivo', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--cinza); }
+    .sizes__table tbody th { font: 400 22px/1 'Anton', Impact, sans-serif; text-align: left; }
+    .sizes__key { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; color: var(--papel); font: 700 11px/1 'Archivo', sans-serif; letter-spacing: 0; vertical-align: middle; }
+    .sizes__key--a { background: var(--verde); } .sizes__key--b { background: var(--azul); }
+    .sizes__note { margin: 16px 0 0; font-size: 14px; color: var(--cinza); }
+    @media (prefers-reduced-motion: reduce) { .sizes[open], .sizes[open]::backdrop { animation: none; } }
+    @media (max-width: 480px) { .lp-kit__summary { flex-direction: column; align-items: flex-start; gap: 8px; } .lp-kit__installments { text-align: left; } }
+    @media (max-width: 400px) { .lp-kit { padding: 16px; } .lp-kit__option-name { min-width: 0; width: 100%; } .lp-kit__qty-btn { padding: 12px 2px; } .lp-kit__qty-btn em { font-size: 11.5px; letter-spacing: -.01em; } }
+
+    /* Papel */
+    .paper { background: var(--papel); color: var(--preto); }
+    .why { padding-top: clamp(64px, 9vw, 120px); padding-bottom: clamp(64px, 9vw, 120px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .why__title { font-size: clamp(64px, 10vw, 120px); }
+    .why__lead { font: 600 clamp(22px, 2.4vw, 28px)/1.3 'Archivo', sans-serif; margin: 0 0 22px; }
+    .why p { color: var(--cinza); font-size: 19px; margin: 0 0 18px; max-width: 30em; }
+
+    .specs { padding-bottom: clamp(64px, 9vw, 120px); }
+    .specs__title { font-size: clamp(40px, 6vw, 72px); margin-bottom: 28px; }
+    .cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .card { position: relative; overflow: hidden; background: var(--branco); border-radius: 6px; padding: 36px 28px 30px; }
+    .card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: var(--bar); transform-origin: left; }
+    .card--verde { --bar: var(--verde); }
+    .card--amarelo { --bar: var(--amarelo); }
+    .card--azul { --bar: var(--azul); }
+    .card h3 { font-family: 'Anton', Impact, sans-serif; font-weight: 400; text-transform: uppercase; font-size: 28px; line-height: 1; margin: 0 0 12px; }
+    .card p { margin: 0; color: var(--cinza); font-size: 17px; }
+
+    /* Bloco azul (azul só em blocos) */
+    .memory { background: var(--azul); color: var(--papel); }
+    .memory .wrap { padding-top: clamp(56px, 8vw, 104px); padding-bottom: clamp(56px, 8vw, 104px); }
+    .memory__title { font-size: clamp(44px, 8vw, 104px); line-height: 1.12; }
+
+    /* Lead */
+    .lead { padding-top: clamp(64px, 9vw, 120px); padding-bottom: clamp(64px, 9vw, 120px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .lead__title { font-size: clamp(48px, 7vw, 88px); color: var(--papel); }
+    .lead__text { color: #D9D5CC; font-size: 19px; margin: 16px 0 0; max-width: 26em; }
+    .lp-lead__fields { display: grid; gap: 14px; }
+    .lp-lead__field { display: grid; gap: 8px; }
+    .lp-lead__field span { font: 600 12px/1 'Archivo', sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #BDB8AE; }
+    .lp-lead__field input { height: 54px; border-radius: 4px; border: 1.5px solid #3A3A3A; background: #1A1A1A; color: var(--papel); padding: 0 16px; font: 400 17px 'Archivo', sans-serif; }
+    .lp-lead__field input:focus { outline: none; border-color: var(--amarelo); }
+    .lp-lead__field input::placeholder { color: #6B6862; }
+    .lp-lead__submit { margin-top: 18px; width: 100%; min-height: 58px; border: 1.5px solid var(--papel); border-radius: 4px; background: transparent; color: var(--papel); cursor: pointer;
+                       font: 400 22px/1 'Anton', Impact, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+    .lp-lead__submit:hover { background: var(--papel); color: var(--preto); }
+    .lp-lead__submit:disabled { opacity: .6; cursor: progress; }
+    .lp-lead__message { min-height: 1.4em; margin: 12px 0 0; color: var(--amarelo); font-weight: 600; }
+    .lp-lead.is-done .lp-lead__fields, .lp-lead.is-done .lp-lead__submit { display: none; }
+    .lp-lead.is-done .lp-lead__message { font: 400 32px/1.05 'Anton', Impact, sans-serif; text-transform: uppercase; color: var(--amarelo); }
+
+    /* Rodapé — único lugar do endosso HENRRI */
+    .footer { border-top: 1px solid #262626; padding-top: 48px; padding-bottom: 40px; display: grid; gap: 20px; justify-items: start; }
+    @media (max-width: 1023px) { .footer { padding-bottom: calc(190px + env(safe-area-inset-bottom)); } }
+    .footer__mark { display: grid; justify-items: center; gap: 10px; }
+    .footer__mark .logo { font-size: 64px; }
+    .footer__endorse { font: 600 11px/1 'Archivo', sans-serif; letter-spacing: .32em; text-transform: uppercase; color: var(--papel); }
+    .footer__info { color: #A9A59D; font-size: 14px; margin: 0; display: grid; gap: 12px; justify-items: start; }
+    .footer__info p { margin: 0; }
+    .footer__links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .footer__link { display: inline-flex; align-items: center; gap: 8px; color: var(--papel); text-decoration: none; font: 600 15px/1 'Archivo', sans-serif;
+                     padding: 10px 14px; border: 1.5px solid #3A3A3A; border-radius: 4px; transition: border-color .2s, color .2s; }
+    .footer__link:hover { border-color: var(--amarelo); color: var(--amarelo); }
+    .footer__address { font-style: normal; display: grid; gap: 6px; line-height: 1.5; }
+    .footer__address a { color: #D9D5CC; text-decoration: none; }
+    .footer__address a:hover { color: var(--amarelo); }
+
+    /* Barra fixa de compra no celular */
+    .stickybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--preto); border-top: 1px solid #262626; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+                 display: flex; align-items: center; justify-content: space-between; gap: 12px; transform: translateY(110%); transition: transform .2s ease; }
+    .stickybar.is-visible { transform: none; }
+    .stickybar__price { font: 700 15px/1.2 'Archivo', sans-serif; color: var(--papel); }
+    .stickybar__price strong { display: block; color: var(--amarelo); font-size: 20px; }
+    .stickybar .btn { min-height: 48px; font-size: 19px; padding: 0 20px; }
+
+    @media (min-width: 720px) {
+      .products { gap: 48px; }
+      .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+      .lp-lead__fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lp-lead__fields .lp-lead__field:first-child { grid-column: 1 / -1; }
+    }
+    @media (min-width: 1024px) {
+      .drop__grid { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 56px; align-items: start; }
+      .drop__intro { position: sticky; top: 32px; }
+      .why { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; }
+      .lead { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 72px; align-items: center; }
+      .footer { grid-template-columns: auto 1fr; align-items: end; gap: 40px; }
+      .footer__info { justify-self: end; text-align: right; justify-items: end; }
+      .stickybar { display: none; }
+    }
+
+    /* ===== Hero: formas da estampa (barra, anel, diagonal) ===== */
+    .hero { position: relative; }
+    .hero__shapes { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+    .hero > *:not(.hero__shapes) { position: relative; z-index: 1; }
+    .shape { position: absolute; display: block; will-change: transform; }
+    /* Ficam na faixa do logo, à direita — nunca sobre o título. */
+    .shape--anel { width: clamp(90px, 13vw, 190px); aspect-ratio: 1; border-radius: 50%; border: clamp(18px, 2.6vw, 38px) solid var(--verde); right: 4%; top: 6%; }
+    .shape--barra { width: clamp(28px, 3.4vw, 48px); height: clamp(120px, 16vw, 230px); background: var(--amarelo); right: 24%; top: 12%; }
+    .shape--diagonal { width: clamp(100px, 12vw, 170px); height: clamp(100px, 12vw, 170px); background: var(--azul); right: 9%; top: 30%;
+                       clip-path: polygon(0 100%, 26% 100%, 100% 0, 74% 0); }
+    @media (max-width: 1023px) {
+      .hero__shapes { opacity: .2; overflow: hidden; }
+      .shape--anel { top: 2%; right: -8%; } .shape--barra { right: 6%; top: 34%; } .shape--diagonal { right: -6%; top: 58%; }
+    }
+
+
+    /* ===== Correntes: cena presa na tela; a rolagem estica e rompe ===== */
+    .chain { position: relative; background: var(--preto); }
+    .chain__stage { position: relative; display: grid; place-items: center; overflow: hidden; padding: clamp(72px, 10vw, 128px) 0; }
+    .chain__svg { display: none; }
+    .chain__copy { position: relative; z-index: 2; text-align: center; padding: 0 var(--gutter); max-width: 1100px; }
+    .chain__title { font-size: clamp(40px, 7.4vw, 104px); color: var(--papel); }
+    .chain__title em { font-style: normal; color: var(--amarelo); }
+    .chain__hint { display: none; }
+    .chain__flash { display: none; }
+    .motion .chain { height: 210vh; }
+    .motion .chain__stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding: 0; }
+    .motion .chain__svg { display: block; position: absolute; top: 50%; left: 50%; width: max(100vw, 880px); height: auto; transform: translate(-50%, -50%); overflow: visible; }
+    .motion .chain__copy { opacity: 0; transform: scale(.9); will-change: opacity, transform; }
+    .motion .chain__hint { display: flex; flex-direction: column; align-items: center; gap: 10px; position: absolute; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+                           font: 700 12px/1 'Archivo', sans-serif; letter-spacing: .28em; text-transform: uppercase; color: #BDB8AE; }
+    .chain__hint i { width: 2px; height: 34px; background: linear-gradient(var(--amarelo), transparent); animation: lp-drip 1.4s ease-in-out infinite; }
+    @keyframes lp-drip { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+    .motion .chain__flash { display: block; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(244, 198, 24, .55), rgba(17, 17, 17, 0) 55%); opacity: 0; pointer-events: none; z-index: 1; }
+    .chain__link { fill: none; stroke: var(--vermelho); stroke-width: 9; stroke-linecap: round; }
+    .chain__bar { fill: var(--vermelho); }
+    .chain__break { transition: stroke .25s ease; }
+    .chain.is-strained .chain__break { stroke: var(--amarelo); }
+    .chain__frag { opacity: 0; }
+    @media (max-width: 1023px) { .br-desk { display: none; } .motion .chain__hint { bottom: calc(96px + env(safe-area-inset-bottom)); } }
+
+    /* Já rompeu neste navegador: a cena não trava a tela, mostra só a frase. */
+    .motion.chain-done .chain { height: auto; }
+    .motion.chain-done .chain__stage { position: relative; height: auto; padding: clamp(72px, 10vw, 128px) 0; }
+    .motion.chain-done .chain__svg, .motion.chain-done .chain__hint, .motion.chain-done .chain__flash { display: none; }
+    .motion.chain-done .chain__copy { opacity: 1 !important; transform: none !important; }
+
+    /* ===== Selo fixo e discreto: só o número; ao tocar abre o balão de compartilhar ===== */
+    .breakbadge { position: fixed; z-index: 60; left: 16px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+                  transform: translateY(180%); transition: transform .45s cubic-bezier(.2,.9,.2,1), bottom .3s ease; }
+    .breakbadge.is-visible { transform: none; }
+    .breakbadge.is-visible.is-yielding:not(.is-open) { transform: translateY(180%); }
+    .stickybar-on .breakbadge { bottom: calc(80px + env(safe-area-inset-bottom)); }
+    .breakbadge__toggle { order: 2; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 10px; border-radius: 999px; cursor: pointer;
+                          background: rgba(17, 17, 17, .88); border: 1px solid #3A3A3A; color: var(--papel); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+                          font: 400 17px/1 'Anton', Impact, sans-serif; letter-spacing: .02em; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+    .breakbadge__toggle:hover, .breakbadge.is-open .breakbadge__toggle { border-color: var(--papel); }
+    .breakbadge__toggle.is-pulsing { animation: lp-pulse 1.2s ease-out 2; }
+    @keyframes lp-pulse { 0% { box-shadow: 0 0 0 0 rgba(244, 198, 24, .6); } 100% { box-shadow: 0 0 0 14px rgba(244, 198, 24, 0); } }
+    .breakbadge__icon { flex: none; width: 26px; height: 15px; }
+    .breakbadge__icon path { fill: none; stroke: var(--vermelho); stroke-width: 6; stroke-linecap: round; }
+    .breakbadge__icon rect { fill: var(--vermelho); }
+    .breakbadge__panel { order: 1; width: min(320px, calc(100vw - 32px)); padding: 16px; border-radius: 8px; background: var(--papel); color: var(--preto);
+                         box-shadow: 0 14px 36px rgba(0, 0, 0, .5); transform-origin: bottom left;
+                         opacity: 0; transform: translateY(8px) scale(.96); pointer-events: none; visibility: hidden;
+                         transition: opacity .2s ease, transform .25s cubic-bezier(.2,.9,.2,1), visibility 0s linear .25s; }
+    .breakbadge.is-open .breakbadge__panel { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+    .breakbadge__panel p { margin: 0 0 12px; font: 400 15px/1.35 'Archivo', sans-serif; }
+    .breakbadge__panel p strong { font: 400 26px/1 'Anton', Impact, sans-serif; margin-right: 4px; }
+    .breakbadge__share { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 14px; border: 0; border-radius: 6px; cursor: pointer;
+                         background: var(--preto); color: var(--papel); font: 400 17px/1 'Anton', Impact, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+    .breakbadge__share:hover { background: #2A2A2A; }
+    .breakbadge__toast { display: block; height: 0; overflow: hidden; margin-top: 0; font: 700 12px/1 'Archivo', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--verde);
+                         text-align: center; transition: height .2s, margin .2s; }
+    .breakbadge__toast.is-on { height: 14px; margin-top: 10px; }
+    @media (min-width: 1024px) { .breakbadge { left: 24px; bottom: 24px; } }
+    @media (prefers-reduced-motion: reduce) { .breakbadge, .breakbadge__panel { transition: none; } .breakbadge__toggle.is-pulsing { animation: none; } }
+
+    /* Crédito Mewtda: dentro do rodapé, logo abaixo do "Produzido por HENRRI"
+       (no fim da página ele ficava atrás da doca de estampas, do selo e da barra de compra) */
+    .credit { display: inline-flex; align-items: center; margin-top: 6px; color: #8F8B83; font: 400 12px/1 'Archivo', sans-serif; letter-spacing: .06em; text-decoration: none; }
+    .credit img { height: 28px; width: auto; margin-bottom: 7px; opacity: .9; transition: opacity .2s; }
+    .credit:hover img { opacity: 1; }
+    .credit__inner { position: relative; display: inline-flex; align-items: center; gap: 10px; padding-bottom: 6px; }
+    .credit__inner::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px;
+              background: linear-gradient(90deg, #FF4D6D, #FF9F43, #FFD93D, #4ADE80, #38BDF8, #818CF8, #E879F9, #FF4D6D);
+              background-size: 200% 100%; transition: height .25s, filter .25s; }
+    .motion .credit__inner::after { animation: credit-rainbow 4s linear infinite; }
+    .credit:hover .credit__inner::after { height: 3px; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .25)); }
+    @keyframes credit-rainbow { to { background-position: 200% 0; } }
+
+
+    /* ===== Contagem pro 2º turno (abaixo da lista) ===== */
+    .countdown { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px;
+                 padding-top: 32px; border-top: 1px solid #262626; }
+    .countdown__label { margin: 0; font: 400 clamp(28px, 3.4vw, 44px)/1.05 'Anton', Impact, sans-serif; text-transform: uppercase; color: var(--papel); }
+    .countdown__units { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: min(100%, 520px); }
+    .countdown__units[hidden] { display: none; }
+    .countdown__unit { display: grid; justify-items: center; gap: 6px; padding: 14px 6px 12px; border-radius: 6px; background: #181818; border: 1px solid #2A2A2A; }
+    .countdown__unit strong { font: 400 clamp(36px, 5vw, 60px)/1 'Anton', Impact, sans-serif; color: var(--amarelo); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: center; }
+    .countdown__unit small { font: 700 11px/1 'Archivo', sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #BDB8AE; }
+    .countdown__unit:last-child strong { color: var(--papel); }
+    /* ===== Faixa corrida ===== */
+    .marquee { background: var(--amarelo); color: var(--preto); overflow: hidden; padding: 16px 0; border-block: 2px solid var(--preto); }
+    .marquee__track { display: flex; width: max-content; will-change: transform; }
+    .marquee__item { display: inline-flex; align-items: center; gap: 28px; padding-right: 28px; white-space: nowrap;
+                     font: 400 clamp(26px, 3.6vw, 44px)/1 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .01em; }
+    .marquee__sep { width: .55em; height: .55em; flex: none; }
+    .marquee__sep--anel { border-radius: 50%; border: .14em solid var(--verde); }
+    .marquee__sep--barra { width: .2em; height: .8em; background: var(--azul); }
+    .marquee__sep--diagonal { background: var(--preto); clip-path: polygon(0 100%, 30% 100%, 100% 0, 70% 0); }
+
+    .memory { overflow: hidden; }
+    .memory__line { display: block; will-change: transform; }
+    .lp-kit__summary strong.bump { animation: lp-bump .38s cubic-bezier(.3,1.6,.5,1); }
+    @keyframes lp-bump { 40% { transform: scale(1.12); } }
+
+    /* ===== Animações (só com .motion; sem JS ou com movimento reduzido, tudo aparece parado) ===== */
+    .motion .flagbar span { transform: scaleX(0); transform-origin: left; animation: lp-grow .8s cubic-bezier(.7,0,.2,1) forwards; }
+    .motion .flagbar span:nth-child(2) { animation-delay: .12s; }
+    .motion .flagbar span:nth-child(3) { animation-delay: .24s; }
+    @keyframes lp-grow { to { transform: none; } }
+
+    .motion .hero .logo { overflow: hidden; }
+    .motion .hero .logo span { display: inline-block; transform: translateY(108%); animation: lp-rise 1s cubic-bezier(.2,.85,.2,1) forwards; }
+    .motion .hero .logo span:nth-child(1) { animation-delay: .25s; }
+    .motion .hero .logo span:nth-child(2) { animation-delay: .35s; }
+    .motion .hero .logo span:nth-child(3) { animation-delay: .45s; }
+    .motion .hero .logo span:nth-child(4) { animation-delay: .55s; }
+    @keyframes lp-rise { to { transform: none; } }
+    .motion .hero__intro { opacity: 0; transform: translateY(24px); animation: lp-in .9s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(.75s + var(--d, 0) * .12s); }
+    @keyframes lp-in { to { opacity: 1; transform: none; } }
+    .motion .shape { opacity: 0; animation: lp-fade 1.2s ease forwards .9s; }
+    @keyframes lp-fade { to { opacity: 1; } }
+    .motion .hero__logo-wrap, .motion .hero__title { transform: translate3d(0, calc(var(--p, 0) * -90px), 0); }
+    .motion .hero__logo-wrap { opacity: calc(1 - var(--p, 0) * .7); }
+    .motion .shape--anel { translate: 0 calc(var(--p, 0) * -260px); }
+    .motion .shape--barra { translate: 0 calc(var(--p, 0) * 180px); }
+    .motion .shape--diagonal { translate: calc(var(--p, 0) * 120px) calc(var(--p, 0) * -120px); }
+
+    .motion .rv { opacity: 0; transform: translateY(32px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); transition-delay: calc(var(--d, 0) * 110ms); }
+    .motion .rv.is-in { opacity: 1; transform: none; }
+
+    .split { white-space: nowrap; }
+    .split .ch { white-space: pre; }
+    .motion .split .ch { display: inline-block; opacity: 0; transform: translateY(70%); transition: transform .8s cubic-bezier(.2,.85,.2,1), opacity .8s ease; transition-delay: calc(var(--i) * 60ms); }
+    .motion .split.is-in .ch { opacity: 1; transform: none; }
+
+    .motion .product__media { position: relative; }
+    .motion .product__media::after { content: ''; position: absolute; inset: 0; background: var(--wipe, var(--verde)); transform-origin: right; transition: transform 1.1s cubic-bezier(.75,0,.2,1); transition-delay: var(--wd, 0s); }
+    .motion .product__media:nth-child(2) { --wipe: var(--azul); --wd: .15s; }
+    .motion .product__media img { transform: scale(1.14); transition: transform 1.6s cubic-bezier(.2,.7,.2,1); transition-delay: var(--wd, 0s); }
+    .motion .product__media.is-in::after { transform: scaleX(0); }
+    .motion .product__media.is-in img { transform: none; }
+
+    .motion [data-words] .w { opacity: .16; transition: opacity .35s ease; }
+    .motion [data-words] .w.on { opacity: 1; }
+
+    .motion .card::before { transform: scaleX(0); transition: transform 1s cubic-bezier(.75,0,.2,1) calc(.3s + var(--d, 0) * 110ms); }
+    .motion .card.is-in::before { transform: none; }
+
+    .motion .memory__line:first-child { transform: translate3d(calc((.5 - var(--p, .5)) * -40vw), 0, 0); }
+    .motion .memory__line:last-child { transform: translate3d(calc((.5 - var(--p, .5)) * 40vw), 0, 0); }
+
+    .motion .footer__mark .logo span { display: inline-block; transform: translateY(40%); opacity: 0; transition: transform .7s cubic-bezier(.2,.85,.2,1), opacity .7s; }
+    .motion .footer__mark.is-in .logo span { transform: none; opacity: 1; }
+    .motion .footer__mark.is-in .logo span:nth-child(2) { transition-delay: .08s; }
+    .motion .footer__mark.is-in .logo span:nth-child(3) { transition-delay: .16s; }
+    .motion .footer__mark.is-in .logo span:nth-child(4) { transition-delay: .24s; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .stickybar { transition: none; } }
+  </style>
+<% end %>
+
+<% split_chars = ->(text) { safe_join(text.chars.each_with_index.map { |c, i| content_tag(:span, c, class: 'ch', style: "--i:#{i}", aria: { hidden: true }) }) } %>
+<% split_words = ->(text) { safe_join(text.split(' ').map { |w| content_tag(:span, w, class: 'w') }, ' ') } %>
+<% marquee_items = ['Independência se veste.', 'Feita pra durar mais que a eleição.', presale_text, 'Branca ou preta.', 'O Brasil tem memória.'] %>
+<% logo = ->(variant) { content_tag(:span, safe_join(%w[1 8 2 2].map { |d| content_tag(:span, d) }), class: "logo logo--#{variant}", aria: { label: '1822' }, role: 'img') } %>
+<% print_art = lambda do |tab|
+     art = if (path = print_art_path.call(tab[:key]))
+             image_tag(path, alt: '', decoding: 'async')
+           elsif tab[:key] == 'colecao-1822'
+             logo.call('cores')
+           else
+             content_tag(:span, safe_join([content_tag(:strong, tab[:label]), content_tag(:span, safe_join(Array.new(3) { tag.i }), class: 'print__shapes')]), class: 'print__word')
+           end
+     content_tag(:span, art, class: 'print', aria: { hidden: true })
+   end %>
+
+<div class="flagbar" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="wrap top">
+  <%= logo.call('branco') %>
+  <div class="top__actions">
+    <button type="button" class="top__sound" data-lp-sound data-lp-sound-anchor aria-pressed="false" aria-label="Ligar som">
+      <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    </button>
+    <% if @landing_page.sales_open? && all_products.any? %>
+      <a class="top__cta" href="#comprar">Comprar</a>
+      <button type="button" class="top__cart" data-lp-cart-open="always" aria-label="Abrir carrinho">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
+        <b data-lp-cart-count></b>
+      </button>
+    <% end %>
+  </div>
+</header>
+<%# Mesmo botão de som, flutuante no canto superior esquerdo quando o cabeçalho sai da tela. %>
+<button type="button" class="sound-fab" data-lp-sound aria-pressed="false" aria-label="Ligar som">
+  <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+</button>
+
+<main>
+  <section class="wrap hero" data-scrub="exit">
+    <div class="hero__shapes" aria-hidden="true">
+      <span class="shape shape--anel"></span>
+      <span class="shape shape--barra"></span>
+      <span class="shape shape--diagonal"></span>
+    </div>
+    <p class="eyebrow eyebrow--amarelo hero__intro">Drop 01 · <%= presale_text.delete_suffix('.') %></p>
+    <div class="hero__logo-wrap"><%= logo.call('cores') %></div>
+    <h1 class="display hero__title hero__intro" style="--d:1">Independência se veste.</h1>
+    <p class="hero__sub hero__intro" style="--d:2">Roupa com posição, feita com padrão de marca premium. <strong>Feita pra durar mais que a eleição.</strong></p>
+    <% if @landing_page.sales_open? && all_products.any? %>
+      <div class="hero__intro" style="--d:3"><a class="btn btn--amarelo" href="#comprar">Quero a minha</a></div>
+    <% end %>
+  </section>
+
+  <div class="marquee" data-marquee aria-hidden="true">
+    <div class="marquee__track">
+      <% 2.times do %>
+        <% marquee_items.each_with_index do |item, i| %>
+          <span class="marquee__item"><%= item %><span class="marquee__sep marquee__sep--<%= %w[anel barra diagonal][i % 3] %>"></span></span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <section class="chain" data-chain aria-label="1822: o Brasil decidiu andar com as próprias pernas">
+    <div class="chain__stage">
+      <div class="chain__flash" data-chain-flash></div>
+      <svg class="chain__svg" viewBox="0 0 1200 300" aria-hidden="true">
+        <% link_x = ->(i) { 600 + (i - 11) * 56 } %>
+        <% draw_link = lambda do |i| %>
+          <% if i.odd? %>
+            <ellipse class="chain__link" cx="<%= link_x.call(i) %>" cy="150" rx="34" ry="18"></ellipse>
+          <% else %>
+            <rect class="chain__bar" x="<%= link_x.call(i) - 34 %>" y="145.5" width="68" height="9" rx="4.5"></rect>
+          <% end %>
+        <% end %>
+        <g data-chain-left>
+          <% (-6..10).each { |i| draw_link.call(i) } %>
+          <path class="chain__link chain__break" d="M 600 132 A 34 18 0 0 0 600 168"></path>
+        </g>
+        <g data-chain-right>
+          <% (12..28).each { |i| draw_link.call(i) } %>
+          <path class="chain__link chain__break" d="M 600 132 A 34 18 0 0 1 600 168"></path>
+        </g>
+        <g data-chain-frags>
+          <circle class="chain__frag" data-v="-1.0,-1.3,140" r="9" fill="none" stroke="#2B9A3E" stroke-width="5"></circle>
+          <rect class="chain__frag" data-v="1.1,-1.1,-210" x="-4" y="-14" width="8" height="28" fill="#F4C618"></rect>
+          <polygon class="chain__frag" data-v="1.3,0.5,260" points="-12,12 -5,12 12,-12 5,-12" fill="#0A5CD6"></polygon>
+          <circle class="chain__frag" data-v="0.7,1.2,-90" r="6" fill="none" stroke="#F4C618" stroke-width="4"></circle>
+          <rect class="chain__frag" data-v="-1.3,0.4,300" x="-3" y="-10" width="6" height="20" fill="#2B9A3E"></rect>
+          <polygon class="chain__frag" data-v="-0.5,-1.5,-180" points="-9,9 -4,9 9,-9 4,-9" fill="#D9272E"></polygon>
+          <rect class="chain__frag" data-v="0.2,-1.6,200" x="-3" y="-8" width="6" height="16" fill="#D9272E"></rect>
+          <circle class="chain__frag" data-v="-0.9,1.0,120" r="5" fill="#0A5CD6"></circle>
+        </g>
+      </svg>
+      <div class="chain__copy" data-chain-copy>
+        <p class="eyebrow eyebrow--amarelo">1822</p>
+        <h2 class="display chain__title">O Brasil decidiu andar <br class="br-desk">com as <em>próprias pernas.</em></h2>
+      </div>
+      <div class="chain__hint" data-chain-hint aria-hidden="true">Role pra romper<i></i></div>
+    </div>
+  </section>
+
+  <section class="wrap drop" id="comprar">
+    <% tabbed = drop_tabs.size > 1 %>
+    <% if tabbed %>
+      <div class="drop__tabs rv" role="tablist" aria-label="Escolha a estampa" data-reveal data-tabs style="--tabs: <%= drop_tabs.size %>">
+        <% drop_tabs.each_with_index do |tab, i| %>
+          <button type="button" class="drop__tab" role="tab" id="aba-<%= tab[:key] %>" aria-controls="painel-<%= tab[:key] %>"
+                  aria-selected="<%= i.zero? %>" tabindex="<%= i.zero? ? 0 : -1 %>">
+            <span class="drop__tab-thumb" style="--shirt: <%= tab[:shirt] %>"><%= print_art.call(tab) %></span>
+            <span class="drop__tab-name"><%= tab[:label] %><i></i></span>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+    <% (drop_tabs.presence || [{ key: 'ladrao', products: [] }]).each_with_index do |tab, i| %>
+    <div class="drop__grid" <% if tabbed %>role="tabpanel" id="painel-<%= tab[:key] %>" aria-labelledby="aba-<%= tab[:key] %>" <%= 'hidden' unless i.zero? %><% end %>>
+      <div class="drop__intro">
+        <% if tab[:key] == 'colecao-1822' %>
+          <p class="eyebrow eyebrow--amarelo rv" data-reveal>Coleção 1822</p>
+          <h2 class="display drop__title split" data-reveal aria-label="1822"><%= split_chars.call('1822') %></h2>
+          <p class="rv" data-reveal style="--d:2">Camiseta preta, 100% algodão. Malha 30.1 penteada, pré-lavada e com costura dupla nos acabamentos.</p>
+          <p class="drop__line rv" data-reveal style="--d:3">Feita pra durar e pra usar no dia a dia.</p>
+        <% else %>
+          <p class="eyebrow eyebrow--amarelo rv" data-reveal>Drop 01</p>
+          <h2 class="display drop__title split" data-reveal aria-label="Ladrão"><%= split_chars.call('Ladrão') %></h2>
+          <p class="rv" data-reveal style="--d:2">Duas camisetas, uma estampa. Arte geométrica na frente e bandeira do Brasil na manga.</p>
+          <p class="drop__line rv" data-reveal style="--d:3">Branca ou preta. Você escolhe o lado do armário.</p>
+        <% end %>
+        <span class="drop__presale rv <%= 'drop__presale--closed' unless @landing_page.sales_open? %>" data-reveal style="--d:4"><%= presale_text %></span>
+      </div>
+
+      <div class="products">
+        <% if tab[:products].any? %>
+          <% kit_products = (merged = lp_merge_products(tab[:products])) ? [merged] : tab[:products] %>
+          <% kit_products.each do |product| %>
+            <% compare_at = lp_compare_at_price(product) %>
+            <% min_price = lp_min_price(product) %>
+            <article class="product">
+              <div class="product__gallery">
+                <% lp_gallery_images(product).each do |image| %>
+                  <figure class="product__media" data-reveal>
+                    <img src="<%= lp_image_url(image['url'], 900) %>"
+                         srcset="<%= lp_image_url(image['url'], 600) %> 600w, <%= lp_image_url(image['url'], 900) %> 900w, <%= lp_image_url(image['url'], 1300) %> 1300w"
+                         sizes="(min-width: 1024px) 30vw, 50vw"
+                         alt="<%= image['altText'].presence || product['title'] %>"
+                         <% if image['width'] %>width="<%= image['width'] %>" height="<%= image['height'] %>"<% end %> decoding="async">
+                  </figure>
+                <% end %>
+              </div>
+              <div class="product__head rv" data-reveal>
+                <h3 class="product__name"><%= product['title'] %></h3>
+                <div class="product__pricing">
+                  <p class="product__price">
+                    <%= lp_money(min_price) if min_price %><small>cada</small>
+                    <% if compare_at && min_price && compare_at > min_price %><s><%= lp_money(compare_at) %></s><% end %>
+                  </p>
+                  <% if min_price %>
+                    <p class="product__installments">em até <%= installments %>x de <strong><%= lp_money(min_price / installments) %></strong> sem juros</p>
+                  <% end %>
+                </div>
+              </div>
+              <div class="rv" data-reveal style="--d:1">
+              <%= render 'landing_pages/shared/kit_builder', product: product, max: 4, installments: installments,
+                         kit_prices: @storefront.kit_prices(lp_first_available_variant_id(product), max: 4),
+                         size_chart_label: 'Tabela de medidas',
+                         help_url: whatsapp_help_url, help_label: 'Estou com dúvidas',
+                         closed_text: 'Pré-venda encerrada. Deixa teu contato aí embaixo e fica sabendo do próximo drop.' %>
+              </div>
+            </article>
+          <% end %>
+        <% else %>
+          <% 2.times do %>
+            <article class="product">
+              <div class="product__media product__media--empty"><%= logo.call('branco') %></div>
+              <h3 class="product__name">Em breve</h3>
+              <% if @preview || !@client.storefront_configured? %>
+                <p class="product__note">
+                  <%= @client.storefront_configured? ? 'Nenhum produto encontrado na Storefront API. Confira os handles e se o produto está publicado no canal do token.' : 'Token da Storefront API não configurado para este cliente.' %>
+                </p>
+              <% end %>
+            </article>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <% end %>
+  </section>
+
+  <dialog class="sizes" id="tabela-medidas" aria-labelledby="tabela-medidas-titulo" data-sizes>
+    <div class="sizes__body">
+      <div class="sizes__head">
+        <div>
+          <p class="eyebrow eyebrow--verde">Camiseta 1822</p>
+          <h2 class="display sizes__title" id="tabela-medidas-titulo">Tabela de medidas</h2>
+        </div>
+        <button type="button" class="sizes__close" aria-label="Fechar" data-sizes-close>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <svg class="sizes__figure" viewBox="0 0 260 230" aria-hidden="true">
+        <path class="sizes__tee" d="M96 14 Q130 38 164 14 L214 32 L250 86 L216 106 L200 82 L202 220 L58 220 L60 82 L44 106 L10 86 L46 32 Z"></path>
+        <line class="sizes__measure sizes__measure--a" x1="64" y1="96" x2="196" y2="96"></line>
+        <path class="sizes__measure sizes__measure--a" d="M72 88 L64 96 L72 104 M188 88 L196 96 L188 104" fill="none"></path>
+        <line class="sizes__measure sizes__measure--b" x1="130" y1="34" x2="130" y2="214"></line>
+        <path class="sizes__measure sizes__measure--b" d="M122 42 L130 34 L138 42 M122 206 L130 214 L138 206" fill="none"></path>
+        <circle cx="96" cy="96" r="12" fill="#2B9A3E"></circle><text class="sizes__tag" x="96" y="103" text-anchor="middle">A</text>
+        <circle cx="130" cy="160" r="12" fill="#0A5CD6"></circle><text class="sizes__tag" x="130" y="167" text-anchor="middle">B</text>
+      </svg>
+      <table class="sizes__table">
+        <thead>
+          <tr>
+            <th scope="col">Tamanho</th>
+            <th scope="col"><span class="sizes__key sizes__key--a">A</span>Tórax</th>
+            <th scope="col"><span class="sizes__key sizes__key--b">B</span>Comprimento</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% size_rows.each do |row| %>
+            <tr><th scope="row"><%= row[:size] %></th><td><%= row[:chest] %> cm</td><td><%= row[:length] %> cm</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+      <p class="sizes__note">Medidas da peça, em centímetros. Tórax é a volta inteira da camiseta na altura do peito.</p>
+    </div>
+  </dialog>
+
+  <% if drop_tabs.size > 1 %>
+    <nav class="printnav" aria-labelledby="printnav-titulo" data-printnav>
+      <span class="printnav__title" id="printnav-titulo">Estampas</span>
+      <%# só no celular: etiqueta com o nome da estampa ativa e o cursor amarelo %>
+      <button type="button" class="printnav__tag" data-printnav-go aria-label="Ver a estampa escolhida"><small>Estampa</small><span data-printnav-name><%= drop_tabs.first[:label] %></span></button>
+      <span class="printnav__cursor" aria-hidden="true"></span>
+      <% drop_tabs.each_with_index do |tab, i| %>
+        <button type="button" class="printnav__item" data-print-jump="aba-<%= tab[:key] %>" aria-current="<%= i.zero? %>" data-print-name="<%= tab[:label] %>" aria-label="<%= tab[:label] %>" style="--shirt: <%= tab[:shirt] %>">
+          <%= print_art.call(tab) %>
+          <span class="printnav__label"><%= tab[:label] %></span>
+          <span class="printnav__burst" aria-hidden="true"><% 6.times do |b| %><i style="--a: <%= b * 60 + 15 %>deg"></i><% end %></span>
+        </button>
+      <% end %>
+    </nav>
+  <% end %>
+
+  <div class="paper">
+    <section class="wrap why">
+      <div>
+        <p class="eyebrow eyebrow--verde rv" data-reveal>Conceito</p>
+        <h2 class="display why__title rv" data-reveal style="--d:1">Por que<br>1822</h2>
+      </div>
+      <div data-words>
+        <p class="why__lead"><%= split_words.call('1822 é o ano em que o Brasil decidiu andar com as próprias pernas.') %></p>
+        <p><%= split_words.call('A marca nasce para quem acredita nisso hoje: liberdade, trabalho e país acima de projeto de poder. Roupa com posição, feita com padrão de marca premium. Não é camiseta de campanha: é peça para usar muito depois da eleição.') %></p>
+      </div>
+    </section>
+
+    <section class="wrap specs">
+      <p class="eyebrow eyebrow--verde rv" data-reveal>A peça</p>
+      <h2 class="display specs__title rv" data-reveal style="--d:1">Camiseta de verdade</h2>
+      <div class="cards">
+        <div class="card card--verde rv" data-reveal>
+          <h3>Frente</h3>
+          <p>Arte LADRÃO geométrica, 28 cm de largura, centralizada no peito.</p>
+        </div>
+        <div class="card card--amarelo rv" data-reveal style="--d:1">
+          <h3>Manga</h3>
+          <p>Bandeira oficial do Brasil na manga direita.</p>
+        </div>
+        <div class="card card--azul rv" data-reveal style="--d:2">
+          <h3>Sob demanda</h3>
+          <p>Estampamos só o que foi vendido. Tamanhos P, M, G e GG. Envio para todo o Brasil.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="memory" data-scrub>
+    <div class="wrap">
+      <h2 class="display memory__title"><span class="memory__line">O Brasil tem memória.</span><span class="memory__line">A camiseta também.</span></h2>
+    </div>
+  </section>
+
+  <section class="wrap lead" id="lista">
+    <div>
+      <p class="eyebrow eyebrow--amarelo rv" data-reveal>Lista 1822</p>
+      <h2 class="display lead__title split" data-reveal aria-label="Ainda não?"><%= split_chars.call('Ainda não?') %></h2>
+      <p class="lead__text rv" data-reveal style="--d:2">Deixa teu contato. Você fica sabendo antes do próximo drop.</p>
+    </div>
+    <div class="rv" data-reveal style="--d:2"><%= render 'landing_pages/shared/lead_form', button_text: 'Entrar na lista', success_text: 'Feito. Você está na lista.' %></div>
+
+    <%# Contagem regressiva pro 2º turno (urnas abrem 8h de Brasília). Some a partir de 26/10. %>
+    <% runoff_at = Time.find_zone('America/Sao_Paulo').local(2026, 10, 25, 8) %>
+    <% if Time.current < runoff_at.end_of_day %>
+      <% left = [(runoff_at - Time.current).to_i, 0].max %>
+      <div class="countdown rv" data-reveal data-countdown="<%= runoff_at.iso8601 %>" data-hide-after="<%= runoff_at.end_of_day.iso8601 %>">
+        <p class="countdown__label" data-countdown-label><%= left.positive? ? 'Segundo turno começa em:' : 'O segundo turno é hoje.' %></p>
+        <div class="countdown__units" role="timer" aria-label="Contagem regressiva até o segundo turno, 25 de outubro de 2026 às 8h" <%= 'hidden' unless left.positive? %>>
+          <% [['dias', left / 86_400], ['horas', left % 86_400 / 3600], ['min', left % 3600 / 60], ['seg', left % 60]].each do |unit, value| %>
+            <span class="countdown__unit">
+              <strong data-countdown-<%= unit %>><%= format('%02d', value) %></strong>
+              <small><%= unit %></small>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </section>
+</main>
+
+<footer class="wrap footer">
+  <div class="footer__mark" data-reveal>
+    <%= logo.call('branco') %>
+    <span class="footer__endorse">Produzido por HENRRI</span>
+    <a class="credit" href="<%= Popup::WIDGET_HOST %>" target="_blank" rel="noopener">
+      <span class="credit__inner">Desenvolvido por <%= image_tag 'landing/mewtda-logo-sm.png', alt: 'Mewtda', width: 87, height: 28, loading: 'lazy' %></span>
+    </a>
+  </div>
+  <div class="footer__info">
+    <div class="footer__links">
+      <a class="footer__link" href="https://henrri.com.br/" target="_blank" rel="noopener">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+        Visite nosso site
+      </a>
+      <a class="footer__link" href="https://www.instagram.com/vista_1822/" target="_blank" rel="noopener">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+        @vista_1822
+      </a>
+    </div>
+    <p>1822 · Independência se veste.<br>Envio para todo o Brasil.</p>
+    <address class="footer__address">
+      <p>Av. Getúlio Vargas, 54 - Loja 8, Funcionários<br>Belo Horizonte - MG</p>
+      <p><a href="mailto:suporte@henrri.com.br">suporte@henrri.com.br</a> · <a href="tel:+5531998025792">(31) 99802-5792</a></p>
+      <p>CNPJ: 53.856.173/0001-72</p>
+    </address>
+  </div>
+</footer>
+
+<script>
+  // Animações da página: revelar ao entrar na tela, efeitos ligados à rolagem
+  // (hero, bloco azul, texto palavra a palavra) e a faixa corrida.
+  (function () {
+    var root = document.documentElement;
+    if (!root.classList.contains('motion')) return;
+
+    var reveals = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { entry.target.classList.add('is-in'); io.unobserve(entry.target); }
+        });
+      }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
+      reveals.forEach(function (el) { io.observe(el); });
+    } else {
+      reveals.forEach(function (el) { el.classList.add('is-in'); });
+    }
+
+    var scrubs = Array.prototype.slice.call(document.querySelectorAll('[data-scrub]'));
+    var words = Array.prototype.map.call(document.querySelectorAll('[data-words]'), function (box) {
+      return { box: box, items: box.querySelectorAll('.w') };
+    });
+    var marquee = document.querySelector('[data-marquee] .marquee__track');
+    var chain = document.querySelector('[data-chain]');
+    var chainParts = chain && {
+      left: chain.querySelector('[data-chain-left]'),
+      right: chain.querySelector('[data-chain-right]'),
+      frags: Array.prototype.map.call(chain.querySelectorAll('.chain__frag'), function (el) {
+        var v = el.dataset.v.split(',').map(parseFloat);
+        return { el: el, dx: v[0], dy: v[1], rot: v[2] };
+      }),
+      copy: chain.querySelector('[data-chain-copy]'),
+      hint: chain.querySelector('[data-chain-hint]'),
+      flash: chain.querySelector('[data-chain-flash]'),
+      broken: false
+    };
+    var easeOut = function (x) { return 1 - Math.pow(1 - x, 3); };
+    var maxChainP = 0;
+
+    // p: 0 → 0.24 estica e treme; 0.24 → 0.3 rompe; depois as metades caem e a frase aparece.
+    function updateChain(vh) {
+      var r = chain.getBoundingClientRect();
+      var span = r.height - vh;
+      if (span <= 0 || r.bottom < -vh || r.top > vh * 2) return false;
+      var p = clamp(-r.top / span);
+      // Depois de romper, não se refaz: rolar de volta mantém a corrente rompida.
+      if (chainParts.broken) { maxChainP = Math.max(maxChainP, p); p = maxChainP; }
+      var t = clamp(p / 0.24);
+      var b = clamp((p - 0.24) / 0.06);
+      var f = clamp((p - 0.27) / 0.4);
+      var straining = t > 0.25 && b === 0 && r.top <= 0;
+      var shake = straining ? Math.sin(performance.now() / 16) * t * t * 3.5 : 0;
+      var pull = t * 9;
+      var fx = easeOut(f) * 760, fy = f * f * 420, rot = easeOut(f) * 32;
+
+      chainParts.left.setAttribute('transform',
+        'translate(' + (-pull - fx + shake).toFixed(2) + ' ' + (fy + shake * 0.4).toFixed(2) + ') rotate(' + (-rot).toFixed(2) + ' 600 150)');
+      chainParts.right.setAttribute('transform',
+        'translate(' + (pull + fx - shake).toFixed(2) + ' ' + (fy - shake * 0.4).toFixed(2) + ') rotate(' + rot.toFixed(2) + ' 600 150)');
+      chain.classList.toggle('is-strained', t > 0.55);
+
+      var burst = easeOut(clamp((p - 0.24) / 0.3));
+      chainParts.frags.forEach(function (frag) {
+        var x = 600 + frag.dx * burst * 260;
+        var y = 150 + frag.dy * burst * 170 + burst * burst * 140;
+        frag.el.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + (frag.rot * burst).toFixed(1) + ')');
+        frag.el.style.opacity = b > 0 ? (1 - clamp((p - 0.42) / 0.25)).toFixed(3) : 0;
+      });
+
+      chainParts.flash.style.opacity = b > 0 && b < 1 ? (Math.sin(b * Math.PI) * 0.9).toFixed(3) : 0;
+      var c = clamp((p - 0.3) / 0.22);
+      chainParts.copy.style.opacity = c.toFixed(3);
+      chainParts.copy.style.transform = 'scale(' + (0.9 + 0.1 * easeOut(c)).toFixed(4) + ')';
+      chainParts.hint.style.opacity = (1 - clamp(p / 0.08)).toFixed(3);
+
+      if (!chainParts.broken && b > 0.5) {
+        chainParts.broken = true;
+        maxChainP = p;
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+        if (window.lpBreakBadge) window.lpBreakBadge.broke();
+      }
+      return straining;
+    }
+    var clamp = function (v) { return Math.max(0, Math.min(1, v)); };
+    var lastY = window.scrollY, velocity = 0, offset = 0, ticking = false;
+
+    function update() {
+      ticking = false;
+      var vh = window.innerHeight;
+      scrubs.forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        var p = el.dataset.scrub === 'exit' ? clamp(-r.top / r.height) : clamp((vh - r.top) / (vh + r.height));
+        el.style.setProperty('--p', p.toFixed(4));
+      });
+      var keepShaking = chain && !root.classList.contains('chain-done') ? updateChain(vh) : false;
+      words.forEach(function (w) {
+        var r = w.box.getBoundingClientRect();
+        var p = clamp((vh * 0.85 - r.top) / (r.height + vh * 0.35));
+        var lit = Math.round(p * w.items.length * 1.08);
+        for (var i = 0; i < w.items.length; i++) w.items[i].classList.toggle('on', i < lit);
+      });
+      // Enquanto a corrente está tensionada, segue tremendo mesmo com a rolagem parada.
+      if (keepShaking && !ticking) { ticking = true; requestAnimationFrame(update); }
+    }
+    function onScroll() {
+      var y = window.scrollY;
+      velocity = Math.min(40, Math.abs(y - lastY));
+      lastY = y;
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    update();
+
+    if (marquee) {
+      var visible = true;
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (e) { visible = e[0].isIntersecting; }).observe(marquee.parentNode);
+      }
+      (function loop() {
+        if (visible) {
+          var half = marquee.scrollWidth / 2;
+          offset -= 0.6 + velocity * 0.35;
+          if (half && -offset >= half) offset += half;
+          marquee.style.transform = 'translate3d(' + offset.toFixed(2) + 'px,0,0)';
+        }
+        velocity *= 0.92;
+        requestAnimationFrame(loop);
+      })();
+    }
+  })();
+</script>
+
+<script>
+  // Abas do drop: clique ou setas trocam o painel visível.
+  (function () {
+    var list = document.querySelector('[data-tabs]');
+    if (!list) return;
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    function select(tab, focus) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+      jumps.forEach(function (j, i) {
+        var on = j.getAttribute('data-print-jump') === tab.id;
+        j.setAttribute('aria-current', on ? 'true' : 'false');
+        if (!on) return;
+        // doca do celular: cursor desliza até a estampa e a etiqueta vira
+        nav.style.setProperty('--active', i);
+        if (navName && navName.textContent !== j.getAttribute('data-print-name')) {
+          navTag.classList.remove('is-flipping'); void navTag.offsetWidth; navTag.classList.add('is-flipping');
+          setTimeout(function () { navName.textContent = j.getAttribute('data-print-name'); }, 200);
+        }
+      });
+      if (focus) tab.focus();
+    }
+
+    // Navegação rápida das estampas: trilho no canto esquerdo (desktop) ou
+    // doca no canto inferior direito (celular). Escolhe a estampa e leva até
+    // ela, com o "carimbo" na miniatura. Só aparece depois que a corrente rompe
+    // (evento do selo) e fora do topo — no celular inclusive durante a compra.
+    var nav = document.querySelector('[data-printnav]');
+    var jumps = nav ? Array.prototype.slice.call(nav.querySelectorAll('[data-print-jump]')) : [];
+    var navTag = nav && nav.querySelector('.printnav__tag');
+    // etiqueta "Estampa · X" (celular): leva pra camiseta da estampa escolhida
+    if (navTag) navTag.addEventListener('click', function () {
+      var active = document.querySelector('[data-tabs] [aria-selected="true"]');
+      if (active && stacked()) showPanel(active); else drop.scrollIntoView();
+    });
+    var navName = nav && nav.querySelector('[data-printnav-name]');
+    var drop = document.getElementById('comprar');
+    // No toque (celular) a troca acontece no pointerup, sem esperar o "click" que
+    // alguns navegadores de celular seguram ou descartam (ex.: com a página rolando).
+    // Se o dedo arrastar, vem pointercancel e nada muda. O click que vem depois do
+    // toque é ignorado; mouse e teclado seguem pelo click.
+    var lastTouchJump = 0;
+    function jumpTo(j) {
+      j.classList.remove('is-stamped'); void j.offsetWidth; j.classList.add('is-stamped');
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+      var tab = document.getElementById(j.getAttribute('data-print-jump'));
+      select(tab);
+      if (stacked()) showPanel(tab); else drop.scrollIntoView();
+    }
+    jumps.forEach(function (j) {
+      j.addEventListener('pointerup', function (e) {
+        if (e.pointerType === 'mouse') return;
+        lastTouchJump = Date.now();
+        jumpTo(j);
+      });
+      j.addEventListener('click', function () {
+        if (Date.now() - lastTouchJump < 700) return;
+        jumpTo(j);
+      });
+      j.addEventListener('animationend', function (e) { if (e.target === j) j.classList.remove('is-stamped'); });
+    });
+    var unlocked = document.documentElement.classList.contains('chain-broken');
+    if (nav && 'IntersectionObserver' in window) {
+      var heroVisible = true, greeted = false;
+      var place = function () {
+        var on = unlocked && !heroVisible;
+        nav.classList.toggle('is-visible', on);
+        // primeira aparição: pulso amarelo pra mostrar que dá pra trocar por ali
+        if (on && !greeted) { greeted = true; nav.classList.add('is-hello'); }
+      };
+      nav.addEventListener('animationend', function (e) { if (e.target === nav) nav.classList.remove('is-hello'); });
+      document.addEventListener('lp:chain-broken', function () { unlocked = true; place(); });
+      new IntersectionObserver(function (e) { heroVisible = e[0].isIntersecting; place(); }).observe(document.querySelector('.hero'));
+      window.addEventListener('resize', place);
+    } else if (nav) {
+      document.addEventListener('lp:chain-broken', function () { nav.classList.add('is-visible'); });
+    }
+    // Abaixo de 1024px a camiseta fica embaixo das abas: escolher uma estampa
+    // rola direto pro começo dela ("Drop 01" / "Coleção 1822").
+    function stacked() { return window.innerWidth < 1024; }
+    function showPanel(tab) { document.getElementById(tab.getAttribute('aria-controls')).scrollIntoView({ block: 'start' }); }
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener('click', function () {
+        select(tab);
+        if (stacked()) showPanel(tab);
+      });
+      tab.addEventListener('keydown', function (e) {
+        var step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (!step) return;
+        e.preventDefault();
+        select(tabs[(i + step + tabs.length) % tabs.length], true);
+      });
+    });
+  })();
+</script>
+
+<script>
+  // Tabela de medidas: o link acima do botão de compra abre o modal; fecha no
+  // X, no Esc (nativo do <dialog>) ou clicando fora.
+  (function () {
+    var dialog = document.querySelector('[data-sizes]');
+    if (!dialog || typeof dialog.showModal !== 'function') return;
+    document.querySelectorAll('[data-lp-size-chart]').forEach(function (link) {
+      link.addEventListener('click', function () { dialog.showModal(); });
+    });
+    dialog.querySelector('[data-sizes-close]').addEventListener('click', function () { dialog.close(); });
+    dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+  })();
+</script>
+
+<script>
+  // Contagem regressiva pro 2º turno.
+  (function () {
+    var box = document.querySelector('[data-countdown]');
+    if (!box) return;
+    var target = new Date(box.dataset.countdown).getTime();
+    var hideAfter = new Date(box.dataset.hideAfter).getTime();
+    var units = box.querySelector('.countdown__units');
+    var label = box.querySelector('[data-countdown-label]');
+    var el = {};
+    ['dias', 'horas', 'min', 'seg'].forEach(function (u) { el[u] = box.querySelector('[data-countdown-' + u + ']'); });
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    function tick() {
+      var now = Date.now();
+      if (now >= hideAfter) { box.hidden = true; return; }
+      var left = Math.max(0, Math.floor((target - now) / 1000));
+      if (left === 0) {
+        label.textContent = 'O segundo turno é hoje.';
+        units.hidden = true;
+        return;
+      }
+      el.dias.textContent = pad(Math.floor(left / 86400));
+      el.horas.textContent = pad(Math.floor(left % 86400 / 3600));
+      el.min.textContent = pad(Math.floor(left % 3600 / 60));
+      el.seg.textContent = pad(left % 60);
+      setTimeout(tick, 1000 - (now % 1000));
+    }
+    tick();
+  })();
+</script>
+
+<% share_url = request.base_url + @landing_page.public_path + '?utm_source=compartilhar&utm_medium=corrente' %>
+<div class="breakbadge" data-breakbadge
+     data-break-url="<%= public_landing_page_break_path(@landing_page.path_prefix, @landing_page.slug) %>"
+     data-count="<%= @landing_page.chain_breaks_count %>" data-share-url="<%= share_url %>"
+     data-share-title="1822 · Independência se veste." data-share-text="Ajude a romper essa corrente.">
+  <button type="button" class="breakbadge__toggle" data-breakbadge-toggle aria-expanded="false" aria-controls="breakbadge-panel"
+          aria-label="Pessoas que já romperam a corrente">
+    <svg class="breakbadge__icon" viewBox="0 0 68 40" aria-hidden="true">
+      <path d="M 26 8 A 16 12 0 0 0 26 32"/>
+      <rect x="0" y="17" width="18" height="6" rx="3"/>
+      <path d="M 42 8 A 16 12 0 0 1 42 32"/>
+      <rect x="50" y="17" width="18" height="6" rx="3"/>
+    </svg>
+    <span data-breakbadge-count><%= number_with_delimiter(@landing_page.chain_breaks_count, delimiter: '.') %></span>
+  </button>
+  <div class="breakbadge__panel" id="breakbadge-panel" role="dialog" aria-label="Romper a corrente">
+    <p><strong data-breakbadge-count><%= number_with_delimiter(@landing_page.chain_breaks_count, delimiter: '.') %></strong> pessoas já romperam a corrente.</p>
+    <button type="button" class="breakbadge__share" data-breakbadge-share>
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+      Ajude a romper essa corrente
+    </button>
+    <span class="breakbadge__toast" data-breakbadge-toast role="status">Link copiado</span>
+  </div>
+</div>
+<script>
+  // Selo "X já romperam a corrente": aparece quando a pessoa rompe (ou se já
+  // rompeu antes neste navegador), registra no servidor e compartilha a página.
+  (function () {
+    var el = document.querySelector('[data-breakbadge]');
+    if (!el) return;
+    var root = document.documentElement;
+    var key = 'lp_broke_<%= @landing_page.id %>';
+    var countEls = el.querySelectorAll('[data-breakbadge-count]');
+    var toggle = el.querySelector('[data-breakbadge-toggle]');
+    var toast = el.querySelector('[data-breakbadge-toast]');
+    var fmt = new Intl.NumberFormat('pt-BR');
+    var shown = false;
+
+    function show() {
+      if (shown) return;
+      shown = true;
+      el.classList.add('is-visible');
+      // Libera o que espera a corrente romper (ex.: navegação das estampas).
+      root.classList.add('chain-broken');
+      document.dispatchEvent(new Event('lp:chain-broken'));
+    }
+
+    function animateTo(target) {
+      var from = parseInt(el.dataset.count, 10) || 0;
+      el.dataset.count = target;
+      var start = performance.now();
+      (function step(now) {
+        var k = Math.min(1, (now - start) / 900);
+        var text = fmt.format(Math.round(from + (target - from) * (1 - Math.pow(1 - k, 3))));
+        countEls.forEach(function (c) { c.textContent = text; });
+        if (k < 1) requestAnimationFrame(step);
+      })(start);
+    }
+
+    window.lpBreakBadge = {
+      broke: function () {
+        try { localStorage.setItem(key, '1'); } catch (e) {}
+        show();
+        toggle.classList.add('is-pulsing');
+        animateTo((parseInt(el.dataset.count, 10) || 0) + 1);
+        fetch(el.dataset.breakUrl, { method: 'POST', headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (json) { if (typeof json.count === 'number') animateTo(json.count); })
+          .catch(function () {});
+      }
+    };
+
+    if (root.classList.contains('chain-done')) {
+      show();
+    } else if (!root.classList.contains('motion') && 'IntersectionObserver' in window) {
+      // Sem animação a corrente não "rompe": mostra o selo quando a frase aparece, sem contar.
+      var chain = document.querySelector('[data-chain]');
+      if (chain) new IntersectionObserver(function (e, io) {
+        if (e[0].isIntersecting) { show(); io.disconnect(); }
+      }).observe(chain);
+    }
+
+    function setOpen(open) {
+      el.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    toggle.addEventListener('click', function () { toggle.classList.remove('is-pulsing'); setOpen(!el.classList.contains('is-open')); });
+    document.addEventListener('click', function (e) { if (!el.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+
+    // No celular o selo nunca cobre o botão de compra: sai de cena enquanto ele está visível.
+    var buyButtons = document.querySelectorAll('[data-lp-submit]');
+    if (buyButtons.length && 'IntersectionObserver' in window) {
+      var onScreen = new Set();
+      var yieldIo = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { e.isIntersecting ? onScreen.add(e.target) : onScreen.delete(e.target); });
+        el.classList.toggle('is-yielding', onScreen.size > 0 && window.innerWidth < 1024);
+      });
+      buyButtons.forEach(function (b) { yieldIo.observe(b); });
+    }
+
+    el.querySelector('[data-breakbadge-share]').addEventListener('click', function () {
+      var data = { title: el.dataset.shareTitle, text: el.dataset.shareText, url: el.dataset.shareUrl };
+      if (navigator.share) { navigator.share(data).catch(function () {}); return; }
+      var done = function () {
+        toast.classList.add('is-on');
+        setTimeout(function () { toast.classList.remove('is-on'); }, 1800);
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(data.text + ' ' + data.url).then(done, function () { window.prompt('Copie o link:', data.url); });
+      } else {
+        window.prompt('Copie o link:', data.url);
+      }
+    });
+  })();
+</script>
+
+<script>
+  // Trilha sonora: tenta tocar sozinha ao abrir a página, com fade-in, em loop.
+  // Quase todo navegador bloqueia som automático (Safari, Firefox, celulares;
+  // o Chrome deixa pra quem já interagiu com o site). Bloqueou: o botão pulsa
+  // e a música começa no primeiro gesto em qualquer lugar (toque, clique ou
+  // tecla — rolar não conta). O botão liga/desliga e o "desligado" fica
+  // lembrado neste navegador. Pausa quando a aba vai pro fundo e volta junto.
+  // (No iPhone o volume é sempre o do aparelho: o Safari ignora audio.volume.)
+  (function () {
+    var buttons = document.querySelectorAll('[data-lp-sound]');
+    if (!buttons.length || typeof Audio === 'undefined') return;
+    var html = document.documentElement;
+    var KEY = 'lp_sound_off_<%= @landing_page.id %>';
+    var VOLUME = 0.45;
+    var audio = new Audio('<%= audio_path('drop_01_1822/trilha.mp3') %>');
+    audio.loop = true;
+    audio.preload = mutedByUser() ? 'none' : 'auto'; // quem desligou o som não baixa os 2,3 MB
+    var playing = false, resumeOnReturn = false, fadeTimer = null;
+
+    function mutedByUser() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+    function rememberMuted(on) { try { on ? localStorage.setItem(KEY, '1') : localStorage.removeItem(KEY); } catch (e) {} }
+    function paint() {
+      html.classList.toggle('lp-sound-on', playing);
+      buttons.forEach(function (b) {
+        b.setAttribute('aria-pressed', playing ? 'true' : 'false');
+        b.setAttribute('aria-label', playing ? 'Desligar som' : 'Ligar som');
+      });
+    }
+    function fade(to, ms, done) {
+      clearInterval(fadeTimer);
+      var from = audio.volume, t0 = Date.now();
+      fadeTimer = setInterval(function () {
+        var k = Math.min(1, (Date.now() - t0) / ms);
+        audio.volume = from + (to - from) * k;
+        if (k >= 1) { clearInterval(fadeTimer); if (done) done(); }
+      }, 30);
+    }
+    function start() {
+      audio.volume = 0;
+      var attempt = audio.play();
+      return Promise.resolve(attempt).then(function () {
+        playing = true; html.classList.remove('lp-sound-blocked'); paint(); fade(VOLUME, 1500);
+      }, function () {
+        playing = false; paint();
+        throw new Error('blocked');
+      });
+    }
+    function stop() {
+      playing = false; paint();
+      fade(0, 350, function () { audio.pause(); });
+    }
+
+    buttons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (playing) { stop(); rememberMuted(true); }
+        else { rememberMuted(false); start().catch(function () {}); }
+      });
+    });
+
+    // Primeiro gesto na página: começa a tocar (se a pessoa não desligou antes).
+    // Se o navegador ainda não aceitar aquele gesto, espera o próximo.
+    var GESTURES = ['pointerdown', 'mousedown', 'pointerup', 'touchend', 'click', 'keydown'];
+    function stopListening() { GESTURES.forEach(function (t) { document.removeEventListener(t, onGesture, true); }); }
+    // Um clique dispara vários desses eventos em sequência: só a 1ª tentativa vale.
+    var trying = false;
+    function onGesture(event) {
+      if (event.target.closest && event.target.closest('[data-lp-sound]')) { stopListening(); return; } // o botão cuida
+      if (mutedByUser() || playing) { stopListening(); return; }
+      if (trying) return;
+      trying = true;
+      start().then(stopListening, function () { trying = false; });
+    }
+    GESTURES.forEach(function (t) { document.addEventListener(t, onGesture, true); });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && playing) { resumeOnReturn = true; audio.pause(); }
+      else if (!document.hidden && resumeOnReturn) { resumeOnReturn = false; audio.play().catch(function () { playing = false; paint(); }); }
+    });
+
+    // Botão flutuante só aparece quando o do cabeçalho sai da tela.
+    var anchor = document.querySelector('[data-lp-sound-anchor]');
+    if (anchor && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        html.classList.toggle('lp-top-gone', !entries[0].isIntersecting);
+      }).observe(anchor);
+    }
+    paint();
+
+    // Tenta tocar já ao abrir. Se o navegador bloquear, o botão pulsa e o
+    // primeiro toque/clique em qualquer lugar começa a música.
+    if (!mutedByUser()) {
+      start().then(stopListening, function () { html.classList.add('lp-sound-blocked'); });
+    }
+  })();
+</script>
+
+<% if @landing_page.sales_open? && first_product %>
+  <%= render 'landing_pages/shared/cart', installments: installments, continue_href: '#comprar',
+             empty_text: 'Seu carrinho tá vazio. Bora escolher?' %>
+  <div class="stickybar" data-stickybar>
+    <span class="stickybar__price">Drop 01 · a partir de<strong><%= lp_money(all_products.filter_map { |p| lp_min_price(p) }.min) %></strong></span>
+    <a class="btn btn--amarelo" href="#comprar">Comprar</a>
+  </div>
+  <script>
+    (function () {
+      var bar = document.querySelector('[data-stickybar]');
+      var hero = document.querySelector('.hero');
+      var drop = document.getElementById('comprar');
+      if (!bar || !('IntersectionObserver' in window)) return;
+      var heroVisible = true, dropVisible = false;
+      function update() {
+        var on = !heroVisible && !dropVisible;
+        bar.classList.toggle('is-visible', on);
+        document.body.classList.toggle('stickybar-on', on && window.innerWidth < 1024);
+      }
+      new IntersectionObserver(function (e) { heroVisible = e[0].isIntersecting; update(); }).observe(hero);
+      new IntersectionObserver(function (e) { dropVisible = e[0].isIntersecting; update(); }, { threshold: 0.15 }).observe(drop);
+    })();
+  </script>
+<% end %>

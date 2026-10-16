@@ -1,0 +1,54 @@
+// Paleta adotada em todo o tema (agosto/2026): navy + laranja, a mesma da
+// landing page institucional (app/assets/stylesheets/pages/institutional.scss).
+:root {
+  --primary: #fc7107;
+  --bg: #ffffff;
+  --fg: #212121;
+  --fg-alt: #6a6f71;
+  --chrome-bg: #00247e;
+  --chrome-fg: #F3F4F6;
+  --outline: #e7e8ed;
+  --primary-tint: rgba(252, 113, 7, .08);
+  --radius: 0.45rem;
+}
+
+:root.theme-dark {
+  --primary: #ff8a33;
+  --bg: #121317;
+  --fg: #dcdcdc;
+  --fg-alt: #a8acad;
+  --chrome-bg: #001233;
+  --chrome-fg: #F3F4F6;
+  --outline: #2c313a;
+  --primary-tint: rgba(255, 138, 51, .12);
+}
+
+body {
+  font-family: 'Google Sans Flex', 'Roboto', ui-sans-serif, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.crm-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--chrome-fg);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.crm-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.crm-theme-toggle .fa-sun { display: none; }
+.crm-theme-toggle .fa-moon { display: block; }
+
+:root.theme-dark .crm-theme-toggle .fa-sun { display: block; }
+:root.theme-dark .crm-theme-toggle .fa-moon { display: none; }

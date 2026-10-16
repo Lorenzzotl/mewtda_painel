@@ -1,0 +1,117 @@
+<%#
+  Controle remoto fixo no canto inferior esquerdo — substitui o cabeçalho.
+  Cada tecla é um "canal" (seção da página): clicar rola até ela, CH ▲/▼
+  pula pro canal anterior/seguinte e o visor mostra o canal atual conforme
+  a pessoa rola. Em telas estreitas ele fica recolhido num mini controle e
+  abre ao tocar. O JS fica no fim de home/index.html.erb (bloco 6).
+%>
+<%
+  # ordem = ordem das seções na página (é o que o CH ▲/▼ percorre).
+  # Páginas de produto passam a própria lista via render 'home/remote',
+  # channels: [...], extras: {...}, home_link: true (tecla que volta pra home).
+  channels = local_assigns[:channels] || [
+    { id: 'inicio',   label: t('home.nav.inicio') },
+    { id: 'produtos', label: t('home.nav.produtos') },
+    { id: 'clientes', label: t('home.nav.clientes') },
+    { id: 'vantagens', label: t('home.nav.vantagens') },
+    { id: 'crm',      label: t('home.nav.crm'),    key: 1 },
+    { id: 'trocas',   label: t('home.nav.trocas'), key: 2 },
+    { id: 'sites',    label: t('home.nav.sites'),  key: 3 },
+    { id: 'apps',     label: t('home.nav.apps'),   key: 4 },
+    { id: 'comparativo',   label: t('home.nav.comparativo') },
+    { id: 'como-funciona', label: t('home.nav.como_funciona') },
+    { id: 'faq',      label: t('home.nav.faq') },
+    { id: 'contato',  label: t('home.nav.contato') }
+  ]
+  extras = local_assigns[:extras] || { 'inicio' => 'fa-solid fa-house', 'clientes' => 'fa-solid fa-users', 'contato' => 'fa-regular fa-comment' }
+  home_link = local_assigns[:home_link]
+
+  # o que o visor mostra em cima do nome: teclas numéricas = mesmo número
+  # (tecla 3 → CH 03), início = CH 00, o resto (sem tecla) = MENU
+  channel_code = lambda do |c|
+    if c[:key] then format('CH %02d', c[:key])
+    elsif c[:id] == 'inicio' then 'CH 00'
+    else 'MENU'
+    end
+  end
+%>
+<nav class="mwtda-lp-remote" data-remote aria-label="<%= t('home.nav.remote_label') %>"
+     data-remote-channels="<%= channels.map { |c| { id: c[:id], label: c[:label], ch: channel_code.(c) } }.to_json %>">
+  <button type="button" class="mwtda-lp-remote__toggle" data-remote-toggle aria-expanded="false" aria-controls="mwtda-remote-body" aria-label="<%= t('home.nav.remote_open') %>">
+    <span class="mwtda-lp-remote__toggle-led"></span>
+    <span class="mwtda-lp-remote__toggle-grip"><i></i><i></i><i></i></span>
+    <span class="mwtda-lp-remote__toggle-label">Menu</span>
+  </button>
+
+  <div class="mwtda-lp-remote__body" id="mwtda-remote-body">
+    <div class="mwtda-lp-remote__top">
+      <span class="mwtda-lp-remote__ir" data-remote-ir aria-hidden="true"></span>
+      <%= link_to new_user_session_path, class: 'mwtda-lp-remote__power', data: { tip: t('home.nav.entrar') }, aria: { label: t('home.nav.entrar') } do %>
+        <i class="fa-solid fa-power-off"></i>
+      <% end %>
+    </div>
+
+    <div class="mwtda-lp-remote__screen" aria-live="polite">
+      <span class="mwtda-lp-remote__ch" data-remote-ch><%= channel_code.(channels.first) %></span>
+      <strong class="mwtda-lp-remote__label" data-remote-label><%= channels.first[:label] %></strong>
+    </div>
+
+    <div class="mwtda-lp-remote__rocker">
+      <button type="button" data-remote-step="-1" aria-label="<%= t('home.nav.ch_up') %>" data-tip="CH ▲"><i class="fa-solid fa-chevron-up"></i></button>
+      <span aria-hidden="true">CH</span>
+      <button type="button" data-remote-step="1" aria-label="<%= t('home.nav.ch_down') %>" data-tip="CH ▼"><i class="fa-solid fa-chevron-down"></i></button>
+    </div>
+
+    <div class="mwtda-lp-remote__keys">
+      <% channels.select { |c| c[:key] }.each do |c| %>
+        <a href="#<%= c[:id] %>" class="mwtda-lp-remote__key" data-remote-channel="<%= c[:id] %>" data-tip="<%= c[:label] %>">
+          <b><%= c[:key] %></b>
+          <small><%= c[:label] %></small>
+        </a>
+      <% end %>
+    </div>
+
+    <div class="mwtda-lp-remote__extras">
+      <% if home_link %>
+        <%# volta pra home de verdade (link, não canal): o JS do controle só
+            intercepta [data-remote-channel], então navega normal %>
+        <%= link_to root_path, class: 'mwtda-lp-remote__mini', data: { tip: t('home.nav.inicio'), turbo: false }, 'aria-label': t('home.nav.inicio') do %>
+          <i class="fa-solid fa-house"></i>
+        <% end %>
+      <% end %>
+      <% extras.each do |id, icon| %>
+        <% label = channels.find { |c| c[:id] == id }[:label] %>
+        <a href="#<%= id %>" class="mwtda-lp-remote__mini" data-remote-channel="<%= id %>" data-tip="<%= label %>" aria-label="<%= label %>">
+          <i class="<%= icon %>"></i>
+        </a>
+      <% end %>
+      <%# tecla da trilha sonora: toca/muta a batida (JS bloco 11). As duas
+          notas se alternam via CSS conforme html.mwtda-sound-on. %>
+      <button type="button" class="mwtda-lp-remote__mini mwtda-lp-remote__mini--sound" data-sound-toggle aria-pressed="false"
+              data-tip="<%= t('home.sound.remote_tip') %>" aria-label="<%= t('home.sound.remote_tip') %>"
+              data-osd-on="<%= t('home.sound.osd_on') %>" data-osd-off="<%= t('home.sound.osd_off') %>">
+        <i class="fa-solid fa-music" aria-hidden="true"></i>
+        <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i>
+        <span class="mwtda-lp-remote__mini-led" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <%= render 'home/language_switcher', wrapper_class: 'mwtda-lp-remote__lang' %>
+
+    <div class="mwtda-lp-remote__brand" aria-hidden="true">
+      <span class="mwtda-lp-plogo__bars"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      mewtda
+    </div>
+  </div>
+</nav>
+
+<%# Efeito de "troca de canal" na tela inteira quando uma tecla do controle
+    é apertada: chiado de TV, faixa rolando e o letreiro do canal (OSD). %>
+<div class="mwtda-lp-zap" data-remote-zap aria-hidden="true">
+  <div class="mwtda-lp-zap__static"></div>
+  <div class="mwtda-lp-zap__bar"></div>
+  <div class="mwtda-lp-zap__osd">
+    <span data-zap-ch></span>
+    <strong data-zap-label></strong>
+  </div>
+</div>

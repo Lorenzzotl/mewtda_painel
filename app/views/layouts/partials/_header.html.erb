@@ -1,0 +1,339 @@
+<header class="crm-header">
+
+  <!-- LEFT -->
+  <div class="crm-header__left">
+
+    <button class="crm-header__hamburger" id="crm-hamburger" type="button" aria-label="Abrir menu" aria-expanded="false">
+      <span class="crm-hamburger__bar"></span>
+      <span class="crm-hamburger__bar"></span>
+      <span class="crm-hamburger__bar"></span>
+    </button>
+
+    <%= link_to crm_path, class: "crm-header__brand" do %>
+      <%= image_tag 'admin/logo-novo.png', class: 'crm-header__logo' %>
+    <% end %>
+
+  </div>
+
+  <!-- SEARCH -->
+  <div class="crm-header__search" id="crm-nav-search">
+    <button type="button" class="crm-header__search-icon-btn" id="crm-nav-search-toggle" aria-label="Buscar telas">
+      <i class="fa-solid fa-magnifying-glass"></i>
+    </button>
+
+    <div class="crm-header__search-input-wrap" id="crm-nav-search-wrap">
+      <i class="fa-solid fa-magnifying-glass crm-header__search-icon"></i>
+      <input
+        type="text"
+        id="crm-nav-search-input"
+        class="crm-header__search-input"
+        placeholder="Buscar telas..."
+        autocomplete="off"
+        data-items="<%= searchable_nav_items(current_user).to_json %>"
+      >
+      <div class="crm-header__search-results" id="crm-nav-search-results"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="crm-header__actions">
+
+    <button type="button" class="crm-theme-toggle" onclick="toggleTheme()" aria-label="Alternar tema">
+      <i class="fa-solid fa-sun"></i>
+      <i class="fa-solid fa-moon"></i>
+    </button>
+
+    <% if current_user.admin? %>
+      <select class="crm-header__client-select" onchange="updateSelectedClient(this.value)">
+        <option value="">Cliente</option>
+        <% Client.where(active: true).order(:name).each do |client| %>
+          <option value="<%= client.id %>" <%= "selected" if session[:selected_client_id].to_i == client.id %>>
+            <%= client.name %>
+          </option>
+        <% end %>
+      </select>
+    <% end %>
+
+    <!-- USER -->
+    <div class="crm-header__user" id="crm-user-menu">
+
+      <div class="crm-header__avatar">
+        <%= current_user.name.first.upcase %>
+      </div>
+
+      <i class="fa-solid fa-chevron-down crm-user-chevron"></i>
+
+      <div class="crm-header__dropdown" id="crm-dropdown">
+
+        <div class="crm-header__dropdown-header">
+          <div class="crm-header__dropdown-avatar"><%= current_user.name.first.upcase %></div>
+          <div class="crm-header__dropdown-header-info">
+            <strong><%= current_user.name %></strong>
+            <span class="crm-header__dropdown-role"><%= current_user.admin? ? 'Administrador' : 'Usuário' %></span>
+            <span class="crm-header__dropdown-email"><%= current_user.email %></span>
+          </div>
+        </div>
+
+        <div class="crm-header__dropdown-sep"></div>
+
+        <%= link_to edit_account_path, class: 'crm-header__dropdown-item' do %>
+          <i class="fa-solid fa-key crm-fa"></i>
+          Minha Conta
+        <% end %>
+
+        <div class="crm-header__dropdown-sep"></div>
+
+        <% if current_user.admin? %>
+          <%= link_to users_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-user crm-fa"></i>
+            Usuários
+          <% end %>
+
+          <%= link_to clients_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-building crm-fa"></i>
+            Clientes
+          <% end %>
+
+          <%= link_to profiles_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-id-badge crm-fa"></i>
+            Perfis
+          <% end %>
+
+          <%= link_to ad_costs_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-money-bill-wave crm-fa"></i>
+            Custos de Anúncio
+          <% end %>
+
+          <%= link_to '/crm/sidekiq', class: 'crm-header__dropdown-item', target: '_blank' do %>
+            <i class="fa-solid fa-bolt crm-fa"></i>
+            Sidekiq
+          <% end %>
+
+          <% if current_user&.profile_id == 1 %>
+            <%= link_to try_on_index_path, class: "crm-header__dropdown-item #{'active' if request.path.start_with?(try_on_index_path)}" do %>
+              <i class="fa-solid fa-wand-magic-sparkles crm-fa"></i>
+              Try-On Virtual
+            <% end %>
+          <% end %>
+          <div class="crm-header__dropdown-sep"></div>
+        <% elsif current_user.profile_id != Profile::AFFILIATE %>
+          <%= link_to edit_settings_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-gear crm-fa"></i>
+            Configurações
+          <% end %>
+
+          <%= link_to ad_costs_path, class: 'crm-header__dropdown-item' do %>
+            <i class="fa-solid fa-money-bill-wave crm-fa"></i>
+            Custos de Anúncio
+          <% end %>
+          <div class="crm-header__dropdown-sep"></div>
+        <% end %>
+
+        <%= link_to destroy_user_session_path,
+          data: { turbo: false },
+          class: 'crm-header__dropdown-item crm-header__dropdown-item--danger' do %>
+          <i class="fa-solid fa-right-from-bracket crm-fa"></i>
+          Sair
+        <% end %>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</header>
+
+<!-- MOBILE OVERLAY -->
+<div class="crm-nav-overlay" id="crm-nav-overlay"></div>
+
+<script>
+
+/* CLIENT */
+function updateSelectedClient(clientId) {
+  if (!clientId) return;
+
+  fetch('/crm/update_selected_client', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ client_id: clientId })
+  })
+  .then(() => location.reload());
+}
+
+function toggleTheme() {
+  var isDark = document.documentElement.classList.toggle('theme-dark');
+  localStorage.setItem('crm-theme', isDark ? 'dark' : 'light');
+}
+
+(function () {
+
+  /* USER DROPDOWN */
+  const menu     = document.getElementById('crm-user-menu');
+  const dropdown = document.getElementById('crm-dropdown');
+  const chevron  = menu ? menu.querySelector('.crm-user-chevron') : null;
+
+  function closeUserDropdown() {
+    if (!dropdown) return;
+    dropdown.classList.remove('open');
+    if (chevron) chevron.classList.remove('open');
+  }
+
+  function openUserDropdown() {
+    if (!dropdown) return;
+    dropdown.classList.add('open');
+    if (chevron) chevron.classList.add('open');
+  }
+
+  if (menu) {
+    menu.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const isOpen = dropdown.classList.contains('open');
+      isOpen ? closeUserDropdown() : openUserDropdown();
+    });
+
+    document.addEventListener('click', function () {
+      closeUserDropdown();
+    });
+
+    dropdown.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+  }
+
+  /* NAV SEARCH — filtra telas/menus (ver HeaderHelper#searchable_nav_items) */
+  const searchBox    = document.getElementById('crm-nav-search');
+  const searchToggle = document.getElementById('crm-nav-search-toggle');
+  const searchWrap   = document.getElementById('crm-nav-search-wrap');
+  const searchInput  = document.getElementById('crm-nav-search-input');
+  const searchResults = document.getElementById('crm-nav-search-results');
+  const navItems = searchInput ? JSON.parse(searchInput.dataset.items || '[]') : [];
+  let activeIndex = -1;
+
+  function closeSearchResults() {
+    if (!searchResults) return;
+    searchResults.classList.remove('open');
+    activeIndex = -1;
+  }
+
+  function closeSearchInput() {
+    if (!searchWrap) return;
+    searchWrap.classList.remove('open');
+    closeSearchResults();
+  }
+
+  function renderResults(items) {
+    if (!items.length) {
+      searchResults.innerHTML = '<div class="crm-header__search-empty">Nenhuma tela encontrada</div>';
+      searchResults.classList.add('open');
+      return;
+    }
+
+    searchResults.innerHTML = items.map(function (item, i) {
+      return '<a href="' + item.url + '" class="crm-header__search-result' + (i === activeIndex ? ' active' : '') + '">' +
+        '<i class="' + item.icon + ' crm-fa"></i>' + item.label +
+        '</a>';
+    }).join('');
+    searchResults.classList.add('open');
+  }
+
+  function filterAndRender() {
+    const query = searchInput.value.trim().toLowerCase();
+    activeIndex = -1;
+
+    if (!query) {
+      closeSearchResults();
+      return;
+    }
+
+    const matches = navItems.filter(function (item) {
+      return item.label.toLowerCase().includes(query);
+    });
+
+    renderResults(matches);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', filterAndRender);
+
+    searchInput.addEventListener('keydown', function (e) {
+      const links = searchResults.querySelectorAll('.crm-header__search-result');
+
+      if (e.key === 'ArrowDown' && links.length) {
+        e.preventDefault();
+        activeIndex = (activeIndex + 1) % links.length;
+        links.forEach(function (el, i) { el.classList.toggle('active', i === activeIndex); });
+      } else if (e.key === 'ArrowUp' && links.length) {
+        e.preventDefault();
+        activeIndex = (activeIndex - 1 + links.length) % links.length;
+        links.forEach(function (el, i) { el.classList.toggle('active', i === activeIndex); });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const target = links[activeIndex] || links[0];
+        if (target) window.location = target.getAttribute('href');
+      } else if (e.key === 'Escape') {
+        closeSearchInput();
+        searchInput.blur();
+      }
+    });
+  }
+
+  if (searchToggle) {
+    searchToggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const isOpen = searchWrap.classList.contains('open');
+      if (isOpen) {
+        closeSearchInput();
+      } else {
+        searchWrap.classList.add('open');
+        searchInput.focus();
+      }
+    });
+  }
+
+  if (searchBox) {
+    searchBox.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    document.addEventListener('click', function () {
+      closeSearchResults();
+      if (window.innerWidth <= 768) closeSearchInput();
+    });
+  }
+
+  /* HAMBURGER — abre a sidebar (drawer mobile), ver layouts/partials/_sidebar */
+  const hamburger = document.getElementById('crm-hamburger');
+  const sidebar   = document.getElementById('crm-sidebar');
+  const overlay   = document.getElementById('crm-nav-overlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    hamburger.classList.add('open');
+    overlay.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    hamburger.classList.remove('open');
+    overlay.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  if (hamburger && sidebar) {
+    hamburger.addEventListener('click', function () {
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener('click', closeSidebar);
+  }
+
+})();
+
+</script>

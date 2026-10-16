@@ -1,0 +1,378 @@
+require 'test_helper'
+
+class PublicLandingPagesControllerTest < ActionDispatch::IntegrationTest
+  setup do
+    @client = Client.create!(name: 'HENRRI', email: "loja-#{SecureRandom.hex(4)}@example.com")
+    @page = @client.landing_pages.create!(name: 'Drop 01', path_prefix: 'use1822', slug: 'drop-01',
+                                          template: 'drop_01_1822', active: true)
+  end
+
+  test 'renders an active page by prefix and slug and counts the visit' do
+    get '/use1822/drop-01'
+
+    assert_response :success
+    assert_match 'Independência se veste.', response.body
+    assert_match 'Produzido por HENRRI', response.body
+    assert_match 'href="https://www.instagram.com/vista_1822/"', response.body
+    assert_no_match 'henrriclothing', response.body
+    assert_match 'href="https://henrri.com.br/"', response.body
+    assert_match 'data-chain', response.body
+    assert_match 'O Brasil decidiu andar', response.body
+    assert_equal 1, @page.reload.views_count
+  end
+
+  test 'uses red only on the breaking chain' do
+    get '/use1822/drop-01'
+
+    body = response.body
+    chain_svg = body[%r{<svg class="chain__svg".*?</svg>}m]
+    outside = body.sub(chain_svg, '').gsub(/--vermelho: #D9272E;.*$/i, '').gsub(/var\(--vermelho\)/, '')
+    assert_match(/#D9272E/i, chain_svg)
+    assert_no_match(/#D9272E/i, outside)
+    # .chain__link, .chain__bar e o ícone da corrente no selo (path + rect)
+    assert_equal 4, body.scan('var(--vermelho)').size
+  end
+
+  test 'returns 404 for an unknown page' do
+    get '/use1822/nao-existe'
+    assert_response :not_found
+  end
+
+  test 'returns 404 for an inactive page to visitors, without counting the visit' do
+    @page.update!(active: false)
+
+    get '/use1822/drop-01'
+
+    assert_response :not_found
+    assert_equal 0, @page.reload.views_count
+  end
+
+  test 'lets the owner preview an inactive page' do
+    @page.update!(active: false)
+    Profile.find_or_create_by!(id: Profile::USER) { |p| p.name = 'User' }
+    user = User.create!(name: 'U', email: "u-#{SecureRandom.hex(4)}@example.com", password: 'password123',
+                        password_confirmation: 'password123', profile_id: Profile::USER, client: @client)
+    sign_in user
+
+    get '/use1822/drop-01'
+
+    assert_response :success
+    assert_match 'Pré-visualização', response.body
+    assert_equal 0, @page.reload.views_count
+  end
+
+  test 'shows sales closed after ends_at' do
+    @page.update!(ends_at: 1.hour.ago)
+
+    get '/use1822/drop-01'
+
+    assert_response :success
+    assert_match 'Pré-venda encerrada', response.body
+    assert_no_match '<div class="lp-cart" data-lp-cart', response.body # vendas encerradas: sem carrinho
+  end
+
+  test 'plays the soundtrack from the sound buttons, even with sales closed' do
+    @page.update!(ends_at: 1.hour.ago)
+
+    get '/use1822/drop-01'
+
+    body = response.body
+    assert_equal 2, body.scan(/<button type="button" class="(top__sound|sound-fab)" data-lp-sound/).size
+    assert_match %r{new Audio\('/assets/drop_01_1822/trilha-\h+\.mp3'\)}, body
+    # sem tela de entrada: tenta tocar ao abrir e, se o navegador bloquear, no 1º gesto
+    assert_no_match 'data-intro', body
+    assert_match "var GESTURES = ['pointerdown', 'mousedown', 'pointerup', 'touchend', 'click', 'keydown'];", body
+  end
+
+  test 'adds to a cart drawer and only goes to checkout from it' do
+    product = {
+      'id' => 'gid://shopify/Product/1', 'title' => 'Camiseta Ladrão', 'availableForSale' => true,
+      'featuredImage' => { 'url' => 'https://cdn.example/1.jpg' }, 'images' => { 'nodes' => [] },
+      'options' => [{ 'name' => 'Tamanho', 'optionValues' => [{ 'name' => 'P' }] }],
+      'variants' => { 'nodes' => [{ 'id' => 'gid://shopify/ProductVariant/1', 'availableForSale' => true,
+                                    'selectedOptions' => [{ 'name' => 'Tamanho', 'value' => 'P' }], 'price' => { 'amount' => '69.9' } }] }
+    }
+    fake = Struct.new(:products_list) do
+      def products(_refs) = products_list
+      def product(ref) = products_list.find { |p| p['id'] == ref }
+      def kit_prices(_variant_id, max: 4) = {}
+      def configured? = true
+      def endpoint = 'https://henrri.myshopify.com/api/2026-07/graphql.json'
+      def token = 'public-token'
+    end.new([product])
+    @page.update!(product_handles: ['gid://shopify/Product/1'])
+
+    Shopify::Storefront.stub :new, fake do
+      get '/use1822/drop-01'
+    end
+
+    body = response.body
+    assert_match 'data-lp-cart data-installments="4"', body
+    assert_match 'data-lp-cart-open="always"', body # botão no cabeçalho
+    assert_match 'class="lp-cart-fab" data-lp-cart-open', body # botão flutuante
+    assert_match 'data-lp-cart-checkout>Finalizar compra</button>', body
+    assert_match 'href="#comprar" data-lp-cart-close>Continuar comprando</a>', body
+    assert_match 'Seu carrinho tá vazio. Bora escolher?', body
+    # o JS do kit adiciona ao carrinho quando o drawer existe
+    assert_match "'Adicionar ao carrinho'", body
+    assert_match 'cartLinesAdd(cartId: $id, lines: $lines)', body
+  end
+
+  test 'sends the campaign end to the page so an open tab stops selling when it passes' do
+    ends_at = Time.zone.local(2030, 10, 7, 23, 59)
+    @page.update!(ends_at: ends_at)
+
+    get '/use1822/drop-01'
+
+    assert_response :success
+    assert_match %("endsAt":#{(ends_at.to_f * 1000).to_i}), response.body
+    assert_match 'A campanha acabou em 07/10 às 23:59. As vendas estão encerradas.', response.body
+  end
+
+  test 'does not shadow the CRM routes' do
+    get '/crm/landing-pages'
+    assert_response :redirect # login do Devise, não a landing page
+  end
+
+  test 'registers a lead' do
+    result = LandingPages::RegisterLead::Result.new(lead: @page.leads.create!(name: 'Ana', email: 'ana@example.com', status: 'success'), created: true)
+    fake = Minitest::Mock.new
+    fake.expect(:call, result, [], name: 'Ana', email: 'ana@example.com', phone: '', utms: { 'utm_source' => 'ig' })
+
+    LandingPages::RegisterLead.stub :new, ->(_page) { fake } do
+      post '/use1822/drop-01/lead', params: { name: 'Ana', email: 'ana@example.com', phone: '', utm_source: 'ig' }
+    end
+
+    assert_response :success
+    assert_equal true, response.parsed_body['ok']
+    fake.verify
+  end
+
+  test 'honeypot submissions are accepted silently and not stored' do
+    post '/use1822/drop-01/lead', params: { name: 'Bot', email: 'bot@example.com', website: 'http://spam' }
+
+    assert_response :success
+    assert_equal 0, @page.leads.count
+  end
+
+  test 'renders the kit builder (1 to 4) with the product options' do
+    product = {
+      'id' => 'gid://shopify/Product/1', 'title' => 'Camiseta Ladrão', 'availableForSale' => true,
+      'featuredImage' => { 'url' => 'https://cdn.example/branca.jpg' },
+      'images' => { 'nodes' => [] },
+      'options' => [{ 'name' => 'Cor', 'optionValues' => [{ 'name' => 'Branca' }, { 'name' => 'Preta' }] },
+                    { 'name' => 'Tamanho', 'optionValues' => [{ 'name' => 'P' }, { 'name' => 'GG' }] }],
+      'variants' => { 'nodes' => [
+        { 'id' => 'gid://shopify/ProductVariant/1', 'availableForSale' => true,
+          'selectedOptions' => [{ 'name' => 'Cor', 'value' => 'Branca' }, { 'name' => 'Tamanho', 'value' => 'P' }],
+          'price' => { 'amount' => '149.9' }, 'image' => { 'url' => 'https://cdn.example/branca.jpg' } }
+      ] }
+    }
+
+    fake = Struct.new(:products_list) do
+      def products(_refs) = products_list
+      def product(ref) = products_list.find { |p| p['id'] == ref }
+      def kit_prices(_variant_id, max: 4) = { 1 => 149.9.to_d, 2 => 284.81.to_d, 3 => 418.22.to_d, 4 => 557.63.to_d }.first(max).to_h
+      def configured? = true
+      def endpoint = 'https://henrri.myshopify.com/api/2026-07/graphql.json'
+      def token = 'public-token'
+    end.new([product])
+    @page.update!(product_handles: ['gid://shopify/Product/1'])
+
+    Shopify::Storefront.stub :new, fake do
+      get '/use1822/drop-01'
+    end
+
+    assert_response :success
+    assert_match 'data-lp-kit', response.body
+    assert_match 'Kit 4', response.body
+    assert_no_match 'Kit 5', response.body
+    assert_match 'R$ 557,63', response.body # Kit 4 com o desconto cotado na loja
+    assert_match '−7%', response.body
+    assert_match 'data-kit-prices', response.body
+    assert_match 'data-lp-option="Cor"', response.body
+    assert_match 'em até 4x de <strong>R$ 37,48</strong> sem juros', response.body
+    assert_match 'data-lp-kit-installments="4"', response.body
+    assert_no_match 'role="tablist"', response.body # só uma aba: sem abas
+  end
+
+  test 'splits the 1822 collection shirt and the Ladrão shirts into tabs' do
+    product = lambda do |id, title, color|
+      {
+        'id' => "gid://shopify/Product/#{id}", 'title' => title, 'availableForSale' => true,
+        'featuredImage' => { 'url' => "https://cdn.example/#{id}.jpg" }, 'images' => { 'nodes' => [] },
+        'options' => [{ 'name' => 'Color', 'optionValues' => [{ 'name' => color }] },
+                      { 'name' => 'Size', 'optionValues' => [{ 'name' => 'P' }] }],
+        'variants' => { 'nodes' => [
+          { 'id' => "gid://shopify/ProductVariant/#{id}", 'availableForSale' => true,
+            'selectedOptions' => [{ 'name' => 'Color', 'value' => color }, { 'name' => 'Size', 'value' => 'P' }],
+            'price' => { 'amount' => '69.9' } }
+        ] }
+      }
+    end
+    ladrao = [product.call(1, 'Camiseta Ladrão Branco', 'Branco'), product.call(2, 'Camiseta Ladrão Preto', 'Preto')]
+    colecao = product.call(10793095364902, 'Camiseta 100% Algodão Preta - Coleção 1822', 'Preto')
+
+    fake = Struct.new(:list, :extra) do
+      def products(_refs) = list
+      def product(ref) = (list + [extra]).find { |p| p['id'] == ref }
+      def kit_prices(*, **) = {}
+      def configured? = true
+      def endpoint = 'https://henrri.myshopify.com/api/2026-07/graphql.json'
+      def token = 'public-token'
+    end.new(ladrao, colecao) # a da coleção não está nos handles: vem buscada pelo ID
+    @page.update!(product_handles: %w[gid://shopify/Product/1 gid://shopify/Product/2])
+
+    Shopify::Storefront.stub :new, fake do
+      get '/use1822/drop-01'
+    end
+
+    body = response.body
+    assert_match 'role="tablist"', body
+    assert_match %r{id="aba-colecao-1822"[^>]*aria-selected="true"}, body
+    assert_match %r{id="aba-ladrao"[^>]*aria-selected="false"}, body
+    assert_match '<span class="drop__tab-name">1822<i></i></span>', body
+    assert_match '<span class="drop__tab-name">Ladrão<i></i></span>', body
+    # navegação rápida no canto: um atalho por estampa, apontando pra aba
+    assert_match %r{data-print-jump="aba-colecao-1822" aria-current="true"}, body
+    assert_match %r{data-print-jump="aba-ladrao" aria-current="false"}, body
+    assert_match '<span class="printnav__title" id="printnav-titulo">Estampas</span>', body
+    # arte de cada estampa (DTF da camiseta branca) na aba e no atalho, em fundo branco
+    assert_equal 2, body.scan(%r{src="/assets/lp/drop_01_1822/colecao-1822-\h+\.svg"}).size
+    assert_equal 2, body.scan(%r{src="/assets/lp/drop_01_1822/ladrao-\h+\.svg"}).size
+    assert_equal 4, body.scan('style="--shirt: #FFFFFF"').size
+    # tabela de medidas: um link por kit acima do botão, um modal só
+    assert_equal 2, body.scan('data-lp-size-chart ').size
+    assert_equal 1, body.scan('<dialog class="sizes"').size
+    # só os tamanhos à venda (os produtos daqui só têm P), com as medidas da HENRRI
+    assert_match '<tr><th scope="row">P</th><td>106 cm</td><td>69 cm</td></tr>', body
+    assert_no_match %r{<th scope="row">XGG</th>}, body
+    # botão de dúvidas (WhatsApp) acima do de compra, em cada kit
+    assert_equal 2, body.scan(%r{<a class="lp-kit__help" href="https://wa.me/553198025792\?text=}).size
+    assert_match %r{class="lp-kit__help".*?Estou com dúvidas\s*</a>\s*<button type="button" class="lp-kit__submit"}m, body
+    panel_1822 = body[/id="painel-colecao-1822".*?(?=id="painel-ladrao")/m]
+    panel_ladrao = body[/id="painel-ladrao".*/m]
+    assert_match 'Coleção 1822', panel_1822
+    assert_no_match 'Camiseta Ladrão', panel_1822
+    assert_match 'Camiseta Ladrão', panel_ladrao # as duas cores juntas num kit só
+    assert_no_match 'Coleção 1822</h3>', panel_ladrao
+    assert_match(/id="painel-ladrao"[^>]*hidden/, body)
+    assert_equal 2, body.scan('data-lp-kit ').size
+    assert_match 'em até 4x de <strong>R$ 17,48</strong> sem juros', body
+  end
+
+  test 'renders from the products stored on the page, without calling the Shopify' do
+    product = {
+      'id' => 'gid://shopify/Product/1', 'title' => 'Camiseta Guardada', 'availableForSale' => true,
+      'featuredImage' => { 'url' => 'https://cdn.example/1.jpg' }, 'images' => { 'nodes' => [] },
+      'options' => [{ 'name' => 'Size', 'optionValues' => [{ 'name' => 'P' }, { 'name' => 'M' }] }],
+      'variants' => { 'nodes' => [{ 'id' => 'gid://shopify/ProductVariant/1', 'availableForSale' => true,
+                                    'selectedOptions' => [{ 'name' => 'Size', 'value' => 'P' }], 'price' => { 'amount' => '69.9' } }] }
+    }
+    @page.update!(product_handles: ['gid://shopify/Product/1'])
+    @page.update_columns(storefront_cache: {
+      'products' => { 'gid://shopify/Product/1' => product },
+      'kit_prices' => { 'gid://shopify/ProductVariant/1' => { '1' => '69.9', '2' => '132.81', '3' => '195.02', '4' => '251.64' } }
+    })
+
+    offline = Object.new
+    def offline.configured? = true
+    def offline.endpoint = 'https://henrri.myshopify.com/api/2026-07/graphql.json'
+    def offline.token = 'public-token'
+    def offline.product(ref) = ref == 'gid://shopify/Product/10793095364902' ? nil : raise("buscou #{ref} na Shopify")
+    def offline.kit_prices(*, **) = raise('cotou na Shopify')
+
+    Shopify::Storefront.stub :new, offline do
+      get '/use1822/drop-01'
+    end
+
+    assert_response :success
+    assert_match 'Camiseta Guardada', response.body
+    assert_match 'R$ 251,64', response.body
+  end
+
+  test 'shows the store address and contacts in the footer' do
+    get '/use1822/drop-01'
+
+    assert_match 'Av. Getúlio Vargas, 54 - Loja 8, Funcionários', response.body
+    assert_match 'Belo Horizonte - MG', response.body
+    assert_match 'href="mailto:suporte@henrri.com.br"', response.body
+    assert_match 'href="tel:+5531998025792"', response.body
+    assert_match 'CNPJ: 53.856.173/0001-72', response.body
+  end
+
+  test 'counts a chain break once per browser and returns the total' do
+    post '/use1822/drop-01/break'
+    assert_response :success
+    assert_equal 1, response.parsed_body['count']
+
+    post '/use1822/drop-01/break'
+    assert_equal 1, response.parsed_body['count']
+    assert_equal 1, @page.reload.chain_breaks_count
+  end
+
+  test 'a different browser adds to the count' do
+    @page.update_columns(chain_breaks_count: 41)
+
+    post '/use1822/drop-01/break'
+
+    assert_equal 42, response.parsed_body['count']
+  end
+
+  test 'does not count chain breaks while previewing an inactive page' do
+    @page.update!(active: false)
+    Profile.find_or_create_by!(id: Profile::USER) { |p| p.name = 'User' }
+    sign_in User.create!(name: 'U', email: "u-#{SecureRandom.hex(4)}@example.com", password: 'password123',
+                         password_confirmation: 'password123', profile_id: Profile::USER, client: @client)
+
+    post '/use1822/drop-01/break'
+
+    assert_equal 0, @page.reload.chain_breaks_count
+  end
+
+  test 'renders the break badge with the current count and share text' do
+    @page.update_columns(chain_breaks_count: 1234)
+
+    get '/use1822/drop-01'
+
+    assert_match 'data-breakbadge', response.body
+    assert_match '1.234', response.body
+    assert_match 'Ajude a romper essa corrente', response.body
+    assert_match 'utm_source=compartilhar', response.body
+    assert_match 'aria-expanded="false"', response.body
+  end
+
+  test 'credits Mewtda in the footer' do
+    get '/use1822/drop-01'
+
+    assert_match 'Desenvolvido por', response.body
+    assert_match(/mewtda-logo-sm.*\.png/, response.body)
+    assert_match 'href="https://www.mewtda.com.br"', response.body
+    # junto da assinatura da HENRRI, no rodapé (no fim da página os botões fixos tampavam)
+    assert_match %r{Produzido por HENRRI</span>\s*<a class="credit"}, response.body
+    assert_match %r{<a class="credit".*?</a>\s*</div>\s*<div class="footer__info">}m, response.body
+  end
+
+  test 'shows the countdown to the runoff below the mailing list' do
+    travel_to Time.find_zone('America/Sao_Paulo').local(2026, 10, 7, 8) do
+      get '/use1822/drop-01'
+    end
+
+    assert_match 'Segundo turno começa em:', response.body
+    assert_match 'data-countdown="2026-10-25T08:00:00-03:00"', response.body
+    assert_match '<strong data-countdown-dias>18</strong>', response.body
+    assert response.body.index('data-lp-lead') < response.body.index('data-countdown=')
+  end
+
+  test 'says the runoff is today once the polls open, and drops the countdown after the 25th' do
+    travel_to Time.find_zone('America/Sao_Paulo').local(2026, 10, 25, 10) do
+      get '/use1822/drop-01'
+    end
+    assert_match 'O segundo turno é hoje.', response.body
+
+    travel_to Time.find_zone('America/Sao_Paulo').local(2026, 10, 26, 9) do
+      get '/use1822/drop-01'
+    end
+    assert_no_match 'data-countdown=', response.body
+  end
+end

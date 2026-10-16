@@ -1,0 +1,5 @@
+// A landing page (home/index.html.erb) agora é autocontida — todo o CSS dela
+// vive num <style> inline dentro do próprio view. Esse arquivo existia com um
+// design antigo das mesmas classes .lp-*, e ficar carregado globalmente
+// (fora do <style> inline) causava conflito de cascata com o design novo.
+// Mantido vazio de propósito — não reintroduza regras .lp-* aqui.
